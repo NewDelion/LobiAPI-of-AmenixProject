@@ -13,7 +13,7 @@ namespace LobiAPI
 {
     public class BasicAPI
     {
-        private const string UserAgent = "[AmenixProject] LobiAPI";
+        private const string UserAgent = "LobiAPI-of-AmenixProject";
         private string DeviceUUID = "";
         private string Token = "";
 
@@ -85,6 +85,8 @@ namespace LobiAPI
             Token = await GetToken(DeviceUUID, spell);
             return Token != null && (Token ?? "").Length > 0;
         }
+
+
 
         private class Pattern
         {
