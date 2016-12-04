@@ -44,11 +44,26 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Json\Asset.cs" />
+    <Compile Include="Json\Bookmarks.cs" />
+    <Compile Include="Json\Chat.cs" />
+    <Compile Include="Json\Contacts.cs" />
+    <Compile Include="Json\Followers.cs" />
+    <Compile Include="Json\Group.cs" />
+    <Compile Include="Json\GroupCan.cs" />
+    <Compile Include="Json\MakePrivateGroupResult.cs" />
+    <Compile Include="Json\Me.cs" />
+    <Compile Include="Json\Notification.cs" />
+    <Compile Include="Json\Notifications.cs" />
+    <Compile Include="Json\Pokes.cs" />
+    <Compile Include="Json\PrivateGroups.cs" />
+    <Compile Include="Json\PublicGroups.cs" />
+    <Compile Include="Json\Replies.cs" />
+    <Compile Include="Json\Reply.cs" />
+    <Compile Include="Json\User.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Json\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
