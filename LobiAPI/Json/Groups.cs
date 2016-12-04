@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace LobiAPI.Json
 {
-    public class PrivateGroups
+    public class Groups
     {
         public string title { get; set; }
         public Group[] items { get; set; }

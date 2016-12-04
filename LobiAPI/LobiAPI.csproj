@@ -57,12 +57,13 @@
     <Compile Include="Json\Notification.cs" />
     <Compile Include="Json\Notifications.cs" />
     <Compile Include="Json\Pokes.cs" />
-    <Compile Include="Json\PrivateGroups.cs" />
-    <Compile Include="Json\PublicGroups.cs" />
+    <Compile Include="Json\Groups.cs" />
     <Compile Include="Json\Replies.cs" />
     <Compile Include="Json\Reply.cs" />
     <Compile Include="Json\User.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Utils\Error.cs" />
+    <Compile Include="Utils\ImageURLSizeChanger.cs" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
