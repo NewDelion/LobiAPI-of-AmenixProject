@@ -44,6 +44,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BasicAPI.cs" />
     <Compile Include="Json\Asset.cs" />
     <Compile Include="Json\Bookmarks.cs" />
     <Compile Include="Json\Chat.cs" />
