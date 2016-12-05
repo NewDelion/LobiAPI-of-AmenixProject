@@ -14,7 +14,8 @@ namespace LobiAPI
 {
     public class BasicAPI
     {
-        private const string UserAgent = "LobiAPI-of-AmenixProject";
+        private readonly string UserAgent = "LobiAPI-of-AmenixProject";
+        private readonly string platform = "android";
         private string DeviceUUID = "";
         private string Token = "";
 
@@ -97,7 +98,7 @@ namespace LobiAPI
         /// </summary>
         public async Task<Contacts> GetContacts()
         {
-            return await GET<Contacts>(1, "me/contacts");
+            return await GET<Contacts>(3, "me/contacts");
         }
         /// <summary>
         /// 指定したユーザのフォロー取得
@@ -112,7 +113,7 @@ namespace LobiAPI
                 if (res == null || res.users == null || res.users.Length == 0)
                     break;
                 result.AddRange(res.users);
-                if (res.next_cursor == "-1" || res.next_cursor == "0")
+                if (res.next_cursor == null || res.next_cursor == "-1" || res.next_cursor == "0")
                     break;
                 if (data.ContainsKey("cursor"))
                     data["cursor"] = res.next_cursor;
@@ -127,7 +128,7 @@ namespace LobiAPI
         /// </summary>
         public async Task<Followers> GetFollowers()
         {
-            return await GET<Followers>(1, "me/followers");
+            return await GET<Followers>(2, "me/followers");
         }
         /// <summary>
         /// 指定したユーザのフォロワー取得
@@ -142,7 +143,7 @@ namespace LobiAPI
                 if (res == null || res.users == null || res.users.Length == 0)
                     break;
                 result.AddRange(res.users);
-                if (res.next_cursor == "-1" || res.next_cursor == "0")
+                if (res.next_cursor == null || res.next_cursor == "-1" || res.next_cursor == "0")
                     break;
                 if (data.ContainsKey("cursor"))
                     data["cursor"] = res.next_cursor;
@@ -187,7 +188,7 @@ namespace LobiAPI
                 if (res == null || res.public_groups == null || res.public_groups.Length == 0)
                     break;
                 result.AddRange(res.public_groups);
-                if (res.next_cursor == "-1" || res.next_cursor == "0")
+                if (res.next_cursor == null || res.next_cursor == "-1" || res.next_cursor == "0")
                     break;
                 if (data.ContainsKey("cursor"))
                     data["cursor"] = res.next_cursor;
@@ -276,7 +277,7 @@ namespace LobiAPI
                 if (res == null || res.members == null || res.members.Length == 0)
                     break;
                 result.AddRange(res.members);
-                if (res.next_cursor == "0" || res.next_cursor == "-1")
+                if (res.next_cursor == null || res.next_cursor == "0" || res.next_cursor == "-1")
                     break;
                 if (data.ContainsKey("cursor"))
                     data["cursor"] = res.next_cursor;
@@ -311,7 +312,7 @@ namespace LobiAPI
                 if (res == null || res.users == null || res.users.Length == 0)
                     break;
                 result.AddRange(res.users);
-                if (res.next_cursor == "0" || res.next_cursor == "-1")
+                if (res.next_cursor == null || res.next_cursor == "0" || res.next_cursor == "-1")
                     break;
                 if (data.ContainsKey("cursor"))
                     data["cursor"] = res.next_cursor;
@@ -325,7 +326,7 @@ namespace LobiAPI
         {
             Dictionary<string, string> data = new Dictionary<string, string> { { "count", count.ToString() } };
             if (cursor != null && cursor != "")
-                data.Add("cursor", cursor);
+                data.Add("last_cursor", cursor);
             return await GET<Notifications>(2, "info/notifications", data);
         }
 
@@ -340,7 +341,7 @@ namespace LobiAPI
                 client.DefaultRequestHeaders.Add("User-Agent", UserAgent);
                 client.DefaultRequestHeaders.Add("Host", "api.lobi.co");
                 handler.AutomaticDecompression = DecompressionMethods.GZip;
-                string url = string.Format("https://api.lobi.co/{0}/{1}?platform=android&lang=ja&token={2}{3}", version, request_url, Token, queries == null ? "" : string.Join("", queries.Select(d => string.Format("&{0}={1}", WebUtility.UrlEncode(d.Key), WebUtility.UrlEncode(d.Value)))));
+                string url = string.Format("https://api.lobi.co/{0}/{1}?platform={2}&lang=ja&token={3}{4}", version, request_url, platform, Token, queries == null ? "" : string.Join("", queries.Select(d => string.Format("&{0}={1}", WebUtility.UrlEncode(d.Key), WebUtility.UrlEncode(d.Value)))));
                 var res = await client.GetAsync(url);
                 if (res.StatusCode != HttpStatusCode.OK)
                     throw new RequestAPIException(new ErrorObject(res));
