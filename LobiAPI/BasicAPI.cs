@@ -329,6 +329,8 @@ namespace LobiAPI
             return await GET<Notifications>(2, "info/notifications", data);
         }
 
+
+
         private async Task<T> GET<T>(int version, string request_url, Dictionary<string, string> queries = null)
         {
             using (HttpClientHandler handler = new HttpClientHandler())
@@ -340,6 +342,24 @@ namespace LobiAPI
                 handler.AutomaticDecompression = DecompressionMethods.GZip;
                 string url = string.Format("https://api.lobi.co/{0}/{1}?platform=android&lang=ja&token={2}{3}", version, request_url, Token, queries == null ? "" : string.Join("", queries.Select(d => string.Format("&{0}={1}", WebUtility.UrlEncode(d.Key), WebUtility.UrlEncode(d.Value)))));
                 var res = await client.GetAsync(url);
+                if (res.StatusCode != HttpStatusCode.OK)
+                    throw new RequestAPIException(new ErrorObject(res));
+                string result = await res.Content.ReadAsStringAsync();
+                return JsonConvert.DeserializeObject<T>(result);
+            }
+        }
+
+        private async Task<T> POST<T>(int version, string request_url, HttpContent post_data)
+        {
+            using (HttpClientHandler handler = new HttpClientHandler())
+            using(HttpClient client = new HttpClient(handler))
+            {
+                client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
+                client.DefaultRequestHeaders.Add("User-Agent", UserAgent);
+                client.DefaultRequestHeaders.Add("Host", "api.lobi.co");
+                handler.AutomaticDecompression = DecompressionMethods.GZip;
+                string url = string.Format("https://api.lobi.co/{0}/{1}", version, request_url);
+                var res = await client.PostAsync(url, post_data);
                 if (res.StatusCode != HttpStatusCode.OK)
                     throw new RequestAPIException(new ErrorObject(res));
                 string result = await res.Content.ReadAsStringAsync();
