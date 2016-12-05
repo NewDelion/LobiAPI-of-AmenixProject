@@ -8,6 +8,7 @@ using System.Net;
 using System.Net.Http;
 using Newtonsoft.Json;
 using LobiAPI.Json;
+using LobiAPI.Utils;
 
 namespace LobiAPI
 {
@@ -86,7 +87,265 @@ namespace LobiAPI
             return Token != null && (Token ?? "").Length > 0;
         }
 
+        public async Task<User> GetMe()
+        {
+            return await GET<User>(1, "me");
+        }
+        
+        /// <summary>
+        /// フォロー取得
+        /// </summary>
+        public async Task<Contacts> GetContacts()
+        {
+            return await GET<Contacts>(1, "me/contacts");
+        }
+        /// <summary>
+        /// 指定したユーザのフォロー取得
+        /// </summary>
+        public async Task<List<User>> GetContacts(string user_id)
+        {
+            List<User> result = new List<User>();
+            Dictionary<string, string> data = new Dictionary<string, string>();
+            while (true)
+            {
+                var res = await GET<Contacts>(1, string.Format("user/{0}/contacts", user_id), data);
+                if (res == null || res.users == null || res.users.Length == 0)
+                    break;
+                result.AddRange(res.users);
+                if (res.next_cursor == "-1" || res.next_cursor == "0")
+                    break;
+                if (data.ContainsKey("cursor"))
+                    data["cursor"] = res.next_cursor;
+                else
+                    data.Add("cursor", res.next_cursor);
+            }
+            return result;
+        }
 
+        /// <summary>
+        /// フォロワー取得
+        /// </summary>
+        public async Task<Followers> GetFollowers()
+        {
+            return await GET<Followers>(1, "me/followers");
+        }
+        /// <summary>
+        /// 指定したユーザのフォロワー取得
+        /// </summary>
+        public async Task<List<User>> GetFollowers(string user_id)
+        {
+            List<User> result = new List<User>();
+            Dictionary<string, string> data = new Dictionary<string, string>();
+            while (true)
+            {
+                var res = await GET<Contacts>(1, string.Format("user/{0}/followers", user_id), data);
+                if (res == null || res.users == null || res.users.Length == 0)
+                    break;
+                result.AddRange(res.users);
+                if (res.next_cursor == "-1" || res.next_cursor == "0")
+                    break;
+                if (data.ContainsKey("cursor"))
+                    data["cursor"] = res.next_cursor;
+                else
+                    data.Add("cursor", res.next_cursor);
+            }
+            return result;
+        }
+
+        public async Task<User> GetUser(string user_id)
+        {
+            return await GET<User>(1, string.Format("user/{0}", user_id));
+        }
+
+        public async Task<List<Group>> GetPublicGroupAll()
+        {
+            List<Group> result = new List<Group>();
+            int page = 1;
+            while (true)
+            {
+                var res = await GET<Groups>(1, "public_groups", new Dictionary<string, string>
+                {
+                    { "with_archived", "true" },
+                    { "count", "1000" },
+                    { "page", page++.ToString() }
+                });
+                if (res == null || res.items == null || res.items.Length == 0)
+                    break;
+                result.AddRange(res.items);
+                if (res.items.Length < 1000)
+                    break;
+            }
+            return result.ToList();
+        }
+        public async Task<List<Group>> GetPublicGroupAll(string user_id)
+        {
+            List<Group> result = new List<Group>();
+            Dictionary<string, string> data = new Dictionary<string, string> { { "with_archived", "true" } };
+            while (true)
+            {
+                var res = await GET<VisibleGroups>(1, string.Format("user/{0}/visible_groups", user_id), data);
+                if (res == null || res.public_groups == null || res.public_groups.Length == 0)
+                    break;
+                result.AddRange(res.public_groups);
+                if (res.next_cursor == "-1" || res.next_cursor == "0")
+                    break;
+                if (data.ContainsKey("cursor"))
+                    data["cursor"] = res.next_cursor;
+                else
+                    data.Add("cursor", res.next_cursor);
+            }
+            return result;
+        }
+        public async Task<List<Group>> GetPublicGroup(int page, int count = 1000)
+        {
+            var res = await GET<Groups>(1, "public_groups", new Dictionary<string, string>
+            {
+                { "with_archived", "true" },
+                { "count", count.ToString() },
+                { "page", page.ToString() }
+            });
+            if (res == null || res.items == null)
+                return new List<Group>();
+            return res.items.ToList();
+        }
+
+        public async Task<List<Group>> GetPrivateGroupAll()
+        {
+            List<Group> result = new List<Group>();
+            int page = 1;
+            while (true)
+            {
+                var res = await GET<Groups>(3, "groups", new Dictionary<string, string>
+                {
+                    { "with_archived", "true" },
+                    { "count", "1000" },
+                    { "page", page++.ToString() }
+                });
+                if (res == null || res.items == null || res.items.Length == 0)
+                    break;
+                result.AddRange(res.items);
+                if (res.items.Length < 1000)
+                    break;
+            }
+            return result.ToList();
+        }
+        public async Task<List<Group>> GetPrivateGroup(int page, int count = 1000)
+        {
+            var res = await GET<Groups>(3, "groups", new Dictionary<string, string>
+            {
+                { "with_archived", "true" },
+                { "count", count.ToString() },
+                { "page", page.ToString() }
+            });
+            if (res == null || res.items == null)
+                return new List<Group>();
+            return res.items.ToList();
+        }
+
+        public async Task<Group> GetGroup(string group_id)
+        {
+            return await GET<Group>(2, string.Format("group/{0}", group_id), new Dictionary<string, string>
+            {
+                { "members_count", "1" },
+                { "fields", "subleaders" }
+            });
+        }
+        public async Task<User> GetGroupLeader(string group_id)
+        {
+            return (await GET<Members>(2, string.Format("group/{0}/members", group_id), new Dictionary<string, string>
+            {
+                { "members_count", "1" },
+                { "fields", "owner" }
+            })).owner;
+        }
+        public async Task<List<User>> GetGroupSubleaders(string group_id)
+        {
+            return ((await GET<Members>(2, string.Format("group/{0}/members", group_id), new Dictionary<string, string>
+            {
+                { "members_count", "1" },
+                { "fields", "subleaders" }
+            })).subleaders ?? new User[0]).ToList();
+        }
+        public async Task<List<User>> GetGroupMembersAll(string group_id)
+        {
+            List<User> result = new List<User>();
+            Dictionary<string, string> data = new Dictionary<string, string> { { "members_count", "1000" } };
+            while (true)
+            {
+                var res = await GET<Members>(1, string.Format("group/{0}/members", group_id), data);
+                if (res == null || res.members == null || res.members.Length == 0)
+                    break;
+                result.AddRange(res.members);
+                if (res.next_cursor == "0" || res.next_cursor == "-1")
+                    break;
+                if (data.ContainsKey("cursor"))
+                    data["cursor"] = res.next_cursor;
+                else
+                    data.Add("cursor", res.next_cursor);
+            }
+            return result;
+        }
+
+        public async Task<List<Chat>> GetThreads(string group_id, int count = 20, string older_than = null, string newer_than = null)
+        {
+            Dictionary<string, string> data = new Dictionary<string, string> { { "count", count.ToString() } };
+            if (older_than != null && older_than != "")
+                data.Add("older_than", older_than);
+            if (newer_than != null && newer_than != "")
+                data.Add("newer_than", newer_than);
+            return await GET<List<Chat>>(2, string.Format("group/{0}/chats", group_id), data);
+        }
+
+        public async Task<Replies> GetRepliesAll(string group_id, string chat_id)
+        {
+            return await GET<Replies>(1, string.Format("group/{0}/chats/replies", group_id), new Dictionary<string, string> { { "to", chat_id } });
+        }
+
+        public async Task<List<PokeUserItem>> GetPokesAll(string group_id, string chat_id)
+        {
+            List<PokeUserItem> result = new List<PokeUserItem>();
+            Dictionary<string, string> data = new Dictionary<string, string> { { "id", chat_id } };
+            while (true)
+            {
+                var res = await GET<Pokes>(1, string.Format("group/{0}/chats/pokes", group_id), data);
+                if (res == null || res.users == null || res.users.Length == 0)
+                    break;
+                result.AddRange(res.users);
+                if (res.next_cursor == "0" || res.next_cursor == "-1")
+                    break;
+                if (data.ContainsKey("cursor"))
+                    data["cursor"] = res.next_cursor;
+                else
+                    data.Add("cursor", res.next_cursor);
+            }
+            return result;
+        }
+
+        public async Task<Notifications> GetNotifications(int count = 20, string cursor = null)
+        {
+            Dictionary<string, string> data = new Dictionary<string, string> { { "count", count.ToString() } };
+            if (cursor != null && cursor != "")
+                data.Add("cursor", cursor);
+            return await GET<Notifications>(2, "info/notifications", data);
+        }
+
+        private async Task<T> GET<T>(int version, string request_url, Dictionary<string, string> queries = null)
+        {
+            using (HttpClientHandler handler = new HttpClientHandler())
+            using (HttpClient client = new HttpClient(handler))
+            {
+                client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
+                client.DefaultRequestHeaders.Add("User-Agent", UserAgent);
+                client.DefaultRequestHeaders.Add("Host", "api.lobi.co");
+                handler.AutomaticDecompression = DecompressionMethods.GZip;
+                string url = string.Format("https://api.lobi.co/{0}/{1}?platform=android&lang=ja&token={2}{3}", version, request_url, Token, queries == null ? "" : string.Join("", queries.Select(d => string.Format("&{0}={1}", WebUtility.UrlEncode(d.Key), WebUtility.UrlEncode(d.Value)))));
+                var res = await client.GetAsync(url);
+                if (res.StatusCode != HttpStatusCode.OK)
+                    throw new RequestAPIException(new ErrorObject(res));
+                string result = await res.Content.ReadAsStringAsync();
+                return JsonConvert.DeserializeObject<T>(result);
+            }
+        }
 
         private class Pattern
         {

@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 
 namespace LobiAPI.Json
 {
-    public class Followers
+    public class Members
     {
+        public User[] members { get; set; }
+        public User owner { get; set; }
+        public User[] subleaders { get; set; }
         public string next_cursor { get; set; }
-        public int? visibility { get; set; }
-        public User[] users { get; set; }
     }
 }

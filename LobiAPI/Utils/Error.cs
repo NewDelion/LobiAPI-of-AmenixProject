@@ -49,20 +49,28 @@ namespace LobiAPI.Utils
         API_LIMITATION         = 503
     }
 
+    public class RequestAPIException : Exception
+    {
+        public ErrorObject ErrorObj { get; private set; }
+        public RequestAPIException(ErrorObject error) : base(string.Join("\r\n", error.Messages)) { ErrorObj = error; }
+    }
+
     public class ErrorObject
     {
-        private class ErrorJson
+        protected class ErrorJson
         {
             [JsonProperty("error")]
             public List<string> Messages { get; set; }
         }
 
+        public Uri RequestUri { get; private set; }
         public ERROR_TYPE ErrorType { get; private set; } = ERROR_TYPE.UNKNOWN;
         public HttpStatusCode StatusCode { get; private set; }
         public List<string> Messages { get; private set; } = new List<string>();
 
         public ErrorObject(HttpResponseMessage response)
         {
+            RequestUri = response.RequestMessage.RequestUri;
             StatusCode = response.StatusCode;
             string content = response.Content.ReadAsStringAsync().Result;
             switch (response.StatusCode)

@@ -14,7 +14,13 @@ namespace APITest
         {
             var api = new BasicAPI();
             Login(api);
-            
+            var me = api.GetMe().Result;
+            var me_contacts = api.GetContacts().Result;
+            var me_followers = api.GetFollowers().Result;
+            var user = api.GetUser("402aeea6d30bfbce06f79b61f5776991e5c82e02").Result;
+            var user_contacts = api.GetContacts("402aeea6d30bfbce06f79b61f5776991e5c82e02").Result;
+            var user_followers = api.GetFollowers("402aeea6d30bfbce06f79b61f5776991e5c82e02").Result;
+
 
             Console.ReadLine();
         }

@@ -27,6 +27,7 @@ namespace LobiAPI.Json
         public object[] needs_to_join { get; set; }
         public string now { get; set; }
         public User owner { get; set; }
+        public User[] subleaders { get; set; }
         public int? online_users { get; set; }
         public int? push_enabled { get; set; }
         public string stream_host { get; set; }
