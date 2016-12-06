@@ -9,6 +9,8 @@ using System.Net.Http;
 using Newtonsoft.Json;
 using LobiAPI.Json;
 using LobiAPI.Utils;
+using System.IO;
+using System.Net.Http.Headers;
 
 namespace LobiAPI
 {
@@ -296,7 +298,6 @@ namespace LobiAPI
                 data.Add("newer_than", newer_than);
             return await GET<List<Chat>>(2, string.Format("group/{0}/chats", group_id), data);
         }
-
         public async Task<Replies> GetRepliesAll(string group_id, string chat_id)
         {
             return await GET<Replies>(1, string.Format("group/{0}/chats/replies", group_id), new Dictionary<string, string> { { "to", chat_id } });
@@ -330,9 +331,136 @@ namespace LobiAPI
             return await GET<Notifications>(2, "info/notifications", data);
         }
 
+        public async Task<RequestResult> Like(string group_id, string chat_id)
+        {
+            return await POST<RequestResult>(1, string.Format("group/{0}/chats/like", group_id), new Dictionary<string, string> { { "id", chat_id } });
+        }
+        public async Task<RequestResult> UnLike(string group_id, string chat_id)
+        {
+            return await POST<RequestResult>(1, string.Format("group/{0}/chats/unlike", group_id), new Dictionary<string, string> { { "id", chat_id } });
+        }
+        public async Task<RequestResult> Boo(string group_id, string chat_id)
+        {
+            return await POST<RequestResult>(1, string.Format("group/{0}/chats/boo", group_id), new Dictionary<string, string> { { "id", chat_id } });
+        }
+        public async Task<RequestResult> UnBoo(string group_id, string chat_id)
+        {
+            return await POST<RequestResult>(1, string.Format("group/{0}/chats/unboo", group_id), new Dictionary<string, string> { { "id", chat_id } });
+        }
 
+        public async Task<RequestResult> Follow(string user_id)
+        {
+            return await POST<RequestResult>(1, "me/contacts", new Dictionary<string, string> { { "users", user_id } });
+        }
+        public async Task<RequestResult> UnFollow(string user_id)
+        {
+            return await POST<RequestResult>(1, "me/contacts/remove", new Dictionary<string, string> { { "users", user_id } });
+        }
 
-        private async Task<T> GET<T>(int version, string request_url, Dictionary<string, string> queries = null)
+        public async Task<List<AssetResult>> Assets(List<string> files)
+        {
+            if (files == null || files.Count == 0)
+                throw new ArgumentNullException("ファイルを1枚以上指定してください");
+            foreach (string file in files)
+                if (!File.Exists(file))
+                    throw new FileNotFoundException();
+            List<AssetResult> result = new List<AssetResult>();
+            int order = files.Count > 1 ? 0 : -1;
+            foreach (string file in files)
+            {
+                using (HttpClientHandler handler = new HttpClientHandler())
+                using (HttpClient client = new HttpClient(handler))
+                {
+                    client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
+                    client.DefaultRequestHeaders.Add("User-Agent", UserAgent);
+                    client.DefaultRequestHeaders.Add("Host", "api.lobi.co");
+                    handler.AutomaticDecompression = DecompressionMethods.GZip;
+                    MultipartFormDataContent post_data = new MultipartFormDataContent();
+                    post_data.Add(new StringContent("ja"), "\"lang\"");
+                    post_data.Add(new StringContent(order == -1 ? "" : (order++).ToString()), "\"order\"");
+                    post_data.Add(new StringContent(Token), "\"token\"");
+                    var asset = new StreamContent(File.OpenRead(file));
+                    string extension = Path.GetExtension(file).ToLower();
+                    string content_type = "";
+                    if (extension == ".jpeg" || extension == ".jpg")
+                        content_type = "image/jpeg";
+                    else if (extension == ".png")
+                        content_type = "image/png";
+                    else if (extension == ".webp")
+                        content_type = "image/webp";
+                    else
+                        throw new Exception("この画像フォーマットは対応していません");
+                    asset.Headers.ContentType = new MediaTypeHeaderValue(content_type);
+                    post_data.Add(asset, "\"asset\"", "\"" + Path.GetFileName(file) + "\"");
+                    var res = await client.PostAsync("https://api.lobi.co/1/assets", post_data);
+                    if (res.StatusCode != HttpStatusCode.OK)
+                        throw new RequestAPIException(new ErrorObject(res));
+                    string content = await res.Content.ReadAsStringAsync();
+                    result.Add(JsonConvert.DeserializeObject<AssetResult>(content));
+                }
+            }
+            return result;
+        }
+        public async Task<Chat> Chat(string group_id, string message, bool shout = false)
+        {
+            if (message == null || message == "")
+                throw new ArgumentNullException("メッセージが指定されていません");
+            return await POST<Chat>(1, string.Format("group/{0}/chats", group_id), new Dictionary<string, string>
+            {
+                { "type", shout ? "shout" : "normal" },
+                { "message", message }
+            });
+        }
+        public async Task<Chat> Chat(string group_id, string message, List<string> images, bool shout = false)
+        {
+            if (message == null || message == "")
+                throw new ArgumentNullException("メッセージが指定されていません");
+            var assets = await Assets(images);
+            Dictionary<string, string> data = new Dictionary<string, string>
+            {
+                { "type", shout ? "shout" : "normal" },
+                { "message", message }
+            };
+            if (assets.Count > 0)
+                data.Add("assets", string.Join(",", assets.Select(d => d.id + ":image")));
+            return await POST<Chat>(1, string.Format("group/{0}/chats", group_id), data);
+        }
+        public async Task<Chat> Chat(string group_id, string message, string reply_to)
+        {
+            if (message == null || message == "")
+                throw new ArgumentNullException("メッセージが指定されていません");
+            if (reply_to == null || reply_to == "")
+                throw new ArgumentNullException("返信元が指定されていません");
+            return await POST<Chat>(1, string.Format("group/{0}/chats", group_id), new Dictionary<string, string>
+            {
+                { "type", "normal" },
+                { "reply_to", reply_to },
+                { "message", message }
+            });
+        }
+        public async Task<Chat> Chat(string group_id, string message, List<string> images, string reply_to)
+        {
+            if (message == null || message == "")
+                throw new ArgumentNullException("メッセージが指定されていません");
+            if (reply_to == null || reply_to == "")
+                throw new ArgumentNullException("返信元が指定されていません");
+            var assets = await Assets(images);
+            Dictionary<string, string> data = new Dictionary<string, string>
+            {
+                { "type", "normal" },
+                { "reply_to", reply_to },
+                { "message", message }
+            };
+            if (assets.Count > 0)
+                data.Add("assets", string.Join(",", assets.Select(d => d.id + ":image")));
+            return await POST<Chat>(1, string.Format("group/{0}/chats", group_id), data);
+        }
+        public async Task<RequestResult> RemoveChat(string group_id, string chat_id)
+        {
+            return await POST<RequestResult>(1, string.Format("group/{0}/chats/remove", group_id), new Dictionary<string, string> { { "id", chat_id } });
+        }
+
+        private async Task<T> GET<T>(int version, string request_url, Dictionary<string, string> query = null)
         {
             using (HttpClientHandler handler = new HttpClientHandler())
             using (HttpClient client = new HttpClient(handler))
@@ -341,7 +469,7 @@ namespace LobiAPI
                 client.DefaultRequestHeaders.Add("User-Agent", UserAgent);
                 client.DefaultRequestHeaders.Add("Host", "api.lobi.co");
                 handler.AutomaticDecompression = DecompressionMethods.GZip;
-                string url = string.Format("https://api.lobi.co/{0}/{1}?platform={2}&lang=ja&token={3}{4}", version, request_url, platform, Token, queries == null ? "" : string.Join("", queries.Select(d => string.Format("&{0}={1}", WebUtility.UrlEncode(d.Key), WebUtility.UrlEncode(d.Value)))));
+                string url = string.Format("https://api.lobi.co/{0}/{1}?platform={2}&lang=ja&token={3}{4}", version, request_url, platform, Token, query == null ? "" : string.Join("", query.Select(d => string.Format("&{0}={1}", WebUtility.UrlEncode(d.Key), WebUtility.UrlEncode(d.Value)))));
                 var res = await client.GetAsync(url);
                 if (res.StatusCode != HttpStatusCode.OK)
                     throw new RequestAPIException(new ErrorObject(res));
@@ -349,9 +477,10 @@ namespace LobiAPI
                 return JsonConvert.DeserializeObject<T>(result);
             }
         }
-
-        private async Task<T> POST<T>(int version, string request_url, HttpContent post_data)
+        private async Task<T> POST<T>(int version, string request_url, Dictionary<string, string> query)
         {
+            if (query == null)
+                throw new ArgumentNullException("queryがnullです");
             using (HttpClientHandler handler = new HttpClientHandler())
             using(HttpClient client = new HttpClient(handler))
             {
@@ -360,11 +489,40 @@ namespace LobiAPI
                 client.DefaultRequestHeaders.Add("Host", "api.lobi.co");
                 handler.AutomaticDecompression = DecompressionMethods.GZip;
                 string url = string.Format("https://api.lobi.co/{0}/{1}", version, request_url);
+                FormUrlEncodedContent post_data = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    { "lang", "ja" },
+                    { "token", Token }
+                }.Concat(query));
                 var res = await client.PostAsync(url, post_data);
                 if (res.StatusCode != HttpStatusCode.OK)
                     throw new RequestAPIException(new ErrorObject(res));
                 string result = await res.Content.ReadAsStringAsync();
                 return JsonConvert.DeserializeObject<T>(result);
+            }
+        }
+        private async Task<string> POST_TEST(int version, string request_url, Dictionary<string, string> query)
+        {
+            if (query == null)
+                throw new ArgumentNullException("queryがnullです");
+            using (HttpClientHandler handler = new HttpClientHandler())
+            using (HttpClient client = new HttpClient(handler))
+            {
+                client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
+                client.DefaultRequestHeaders.Add("User-Agent", UserAgent);
+                client.DefaultRequestHeaders.Add("Host", "api.lobi.co");
+                handler.AutomaticDecompression = DecompressionMethods.GZip;
+                string url = string.Format("https://api.lobi.co/{0}/{1}", version, request_url);
+                FormUrlEncodedContent post_data = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    { "lang", "ja" },
+                    { "token", Token }
+                }.Concat(query));
+                var res = await client.PostAsync(url, post_data);
+                if (res.StatusCode != HttpStatusCode.OK)
+                    throw new RequestAPIException(new ErrorObject(res));
+                string result = await res.Content.ReadAsStringAsync();
+                return result;
             }
         }
 

@@ -46,6 +46,7 @@
   <ItemGroup>
     <Compile Include="BasicAPI.cs" />
     <Compile Include="Json\Asset.cs" />
+    <Compile Include="Json\AssetResult.cs" />
     <Compile Include="Json\Bookmarks.cs" />
     <Compile Include="Json\Chat.cs" />
     <Compile Include="Json\Contacts.cs" />
@@ -61,6 +62,7 @@
     <Compile Include="Json\Groups.cs" />
     <Compile Include="Json\Replies.cs" />
     <Compile Include="Json\Reply.cs" />
+    <Compile Include="Json\RequestResult.cs" />
     <Compile Include="Json\User.cs" />
     <Compile Include="Json\VisibleGroups.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

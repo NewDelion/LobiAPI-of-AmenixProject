@@ -52,7 +52,7 @@ namespace LobiAPI.Utils
     public class RequestAPIException : Exception
     {
         public ErrorObject ErrorObj { get; private set; }
-        public RequestAPIException(ErrorObject error) : base(string.Join("\r\n", error.Messages)) { ErrorObj = error; }
+        public RequestAPIException(ErrorObject error) : base(string.Join("\r\n", error.Message)) { ErrorObj = error; }
     }
 
     public class ErrorObject
@@ -66,7 +66,7 @@ namespace LobiAPI.Utils
         public Uri RequestUri { get; private set; }
         public ERROR_TYPE ErrorType { get; private set; } = ERROR_TYPE.UNKNOWN;
         public HttpStatusCode StatusCode { get; private set; }
-        public List<string> Messages { get; private set; } = new List<string>();
+        public string Message { get; private set; } = "";
 
         public ErrorObject(HttpResponseMessage response)
         {
@@ -77,39 +77,39 @@ namespace LobiAPI.Utils
             {
                 case HttpStatusCode.BadRequest:
                     ErrorType = ERROR_TYPE.BAD_REQUEST;
-                    Messages = JsonConvert.DeserializeObject<ErrorJson>(content).Messages;
+                    Message = content;
                     break;
                 case HttpStatusCode.Unauthorized:
                     ErrorType = ERROR_TYPE.INVALID_TOKEN;
-                    Messages.Add("tokenが不正");
+                    Message = "tokenが不正";
                     break;
                 case HttpStatusCode.Forbidden:
                     ErrorType = ERROR_TYPE.FORBIDDEN;
-                    Messages.Add("アクセス権限が無い");
+                    Message = "アクセス権限が無い";
                     break;
                 case HttpStatusCode.NotFound:
                     ErrorType = ERROR_TYPE.NOT_FOUND;
-                    Messages.Add("リソースが存在しない");
+                    Message = "リソースが存在しない";
                     break;
                 case HttpStatusCode.MethodNotAllowed:
                     ErrorType = ERROR_TYPE.INVALID_HTTP;
-                    Messages.Add("HTTPメソッドが不正");
+                    Message = "HTTPメソッドが不正";
                     break;
                 case HttpStatusCode.InternalServerError:
                     ErrorType = ERROR_TYPE.INTERNAL_SERVER_ERROR;
-                    Messages.Add("サーバに問題がある");
+                    Message = "サーバに問題がある";
                     break;
                 case HttpStatusCode.BadGateway:
                     ErrorType = ERROR_TYPE.BAD_GATEWAY;
-                    Messages.Add("サーバに問題がある");
+                    Message = "サーバに問題がある";
                     break;
                 case HttpStatusCode.ServiceUnavailable:
                     ErrorType = ERROR_TYPE.API_LIMITATION;
-                    Messages.Add("APIの利用制限中である");
+                    Message = "APIの利用制限中である";
                     break;
                 default:
                     ErrorType = ERROR_TYPE.UNKNOWN;
-                    Messages.Add(content);
+                    Message = content;
                     break;
             }
         }

@@ -20,8 +20,7 @@ namespace APITest
             var user = api.GetUser("402aeea6d30bfbce06f79b61f5776991e5c82e02").Result;
             var user_contacts = api.GetContacts("402aeea6d30bfbce06f79b61f5776991e5c82e02").Result;
             var user_followers = api.GetFollowers("402aeea6d30bfbce06f79b61f5776991e5c82e02").Result;
-
-
+            
             Console.ReadLine();
         }
 
