@@ -47,6 +47,7 @@
     <Compile Include="BasicAPI.cs" />
     <Compile Include="Json\Asset.cs" />
     <Compile Include="Json\AssetResult.cs" />
+    <Compile Include="Json\BlockingUsersResult.cs" />
     <Compile Include="Json\Bookmarks.cs" />
     <Compile Include="Json\Chat.cs" />
     <Compile Include="Json\Contacts.cs" />

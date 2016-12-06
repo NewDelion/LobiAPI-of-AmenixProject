@@ -20,5 +20,6 @@ namespace LobiAPI.Json
         public string uid { get; set; }
         public long? followed_date { get; set; }
         public long? following_date { get; set; }
+        public int? is_blocked { get; set; }
     }
 }

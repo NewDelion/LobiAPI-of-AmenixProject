@@ -157,7 +157,26 @@ namespace LobiAPI
 
         public async Task<User> GetUser(string user_id)
         {
-            return await GET<User>(1, string.Format("user/{0}", user_id));
+            return await GET<User>(1, string.Format("user/{0}", user_id), new Dictionary<string, string> { { "fields", "is_blocked" } });
+        }
+        public async Task<List<User>> GetBlockingUsersAll()
+        {
+            List<User> result = new List<User>();
+            Dictionary<string, string> data = new Dictionary<string, string>();
+            while (true)
+            {
+                var res = await GET<BlockingUsersResult>(2, "me/blocking_users", data);
+                if (res == null || res.users == null || res.users.Length == 0)
+                    break;
+                result.AddRange(res.users);
+                if (res.next_cursor == null || res.next_cursor == "-1" || res.next_cursor == "0")
+                    break;
+                if (data.ContainsKey("cursor"))
+                    data["cursor"] = res.next_cursor;
+                else
+                    data.Add("cursor", res.next_cursor);
+            }
+            return result;
         }
 
         public async Task<List<Group>> GetPublicGroupAll()
@@ -458,6 +477,32 @@ namespace LobiAPI
         public async Task<RequestResult> RemoveChat(string group_id, string chat_id)
         {
             return await POST<RequestResult>(1, string.Format("group/{0}/chats/remove", group_id), new Dictionary<string, string> { { "id", chat_id } });
+        }
+
+        public async Task<RequestResult> Kick(string group_id, string user_id)
+        {
+            return await POST<RequestResult>(1, string.Format("group/{0}/kick", group_id), new Dictionary<string, string> { { "target_user", user_id } });
+        }
+        public async Task<Group> LeaderTransfer(string group_id, string user_id)
+        {
+            return await POST<Group>(1, string.Format("group/{0}/transfer", group_id), new Dictionary<string, string> { { "target_user", user_id } });
+        }
+        public async Task<RequestResult> SetSubleader(string group_id, string user_id)
+        {
+            return await POST<RequestResult>(1, string.Format("group/{0}/subleaders", group_id), new Dictionary<string, string> { { "user", user_id } });
+        }
+        public async Task<RequestResult> RemoveSubleader(string group_id, string user_id)
+        {
+            return await POST<RequestResult>(1, string.Format("group/{0}/subleaders/remove", group_id), new Dictionary<string, string> { { "user", user_id } });
+        }
+
+        public async Task<RequestResult> Block(string user_id)
+        {
+            return await POST<RequestResult>(1, "me/blocking_users", new Dictionary<string, string> { { "users", user_id } });
+        }
+        public async Task<RequestResult> Unblock(string user_id)
+        {
+            return await POST<RequestResult>(1, "me/blocking_users/remove", new Dictionary<string, string> { { "users", user_id } });
         }
 
         private async Task<T> GET<T>(int version, string request_url, Dictionary<string, string> query = null)
