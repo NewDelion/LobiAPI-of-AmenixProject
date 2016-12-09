@@ -90,9 +90,9 @@ namespace LobiAPI
             return Token != null && (Token ?? "").Length > 0;
         }
 
-        public async Task<User> GetMe()
+        public async Task<Me> GetMe()
         {
-            return await GET<User>(1, "me");
+            return await GET<Me>(1, "me");
         }
         
         /// <summary>
