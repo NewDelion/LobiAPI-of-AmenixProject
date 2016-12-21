@@ -54,7 +54,7 @@ namespace LobiAPI
         {
             return StreamCollection.ContainsKey(group_id);
         }
-        public bool StreamConnected(string group_id)
+        public bool StreamIsConnected(string group_id)
         {
             if (!StreamExists(group_id))
                 throw new Exception("指定されたグループのストリームは登録されていません");
