@@ -19,7 +19,7 @@ namespace LobiAPI
         private readonly string UserAgent = "LobiAPI-of-AmenixProject";
         private readonly string platform = "android";
         private string DeviceUUID = "";
-        private string Token = "";
+        public string Token { get; private set; }
 
         private async Task<string> GetSpell(string mail, string password)
         {
@@ -185,16 +185,16 @@ namespace LobiAPI
             int page = 1;
             while (true)
             {
-                var res = await GET<Groups>(1, "public_groups", new Dictionary<string, string>
+                var res = await GET<Groups[]>(1, "public_groups", new Dictionary<string, string>
                 {
                     { "with_archived", "true" },
                     { "count", "1000" },
                     { "page", page++.ToString() }
                 });
-                if (res == null || res.items == null || res.items.Length == 0)
+                if (res == null || res.Length == 0 || res[0] == null || res[0].items == null || res[0].items.Length == 0)
                     break;
-                result.AddRange(res.items);
-                if (res.items.Length < 1000)
+                result.AddRange(res[0].items);
+                if (res[0].items.Length < 1000)
                     break;
             }
             return result.ToList();
@@ -220,15 +220,15 @@ namespace LobiAPI
         }
         public async Task<List<Group>> GetPublicGroup(int page, int count = 1000)
         {
-            var res = await GET<Groups>(1, "public_groups", new Dictionary<string, string>
+            var res = await GET<Groups[]>(1, "public_groups", new Dictionary<string, string>
             {
                 { "with_archived", "true" },
                 { "count", count.ToString() },
                 { "page", page.ToString() }
             });
-            if (res == null || res.items == null)
+            if (res == null || res.Length == 0 || res[0] == null || res[0].items == null)
                 return new List<Group>();
-            return res.items.ToList();
+            return res[0].items.ToList();
         }
 
         public async Task<List<Group>> GetPrivateGroupAll()
@@ -237,31 +237,31 @@ namespace LobiAPI
             int page = 1;
             while (true)
             {
-                var res = await GET<Groups>(3, "groups", new Dictionary<string, string>
+                var res = await GET<Groups[]>(3, "groups", new Dictionary<string, string>
                 {
                     { "with_archived", "true" },
                     { "count", "1000" },
                     { "page", page++.ToString() }
                 });
-                if (res == null || res.items == null || res.items.Length == 0)
+                if (res == null || res.Length == 0 || res[0] == null || res[0].items == null || res[0].items.Length == 0)
                     break;
-                result.AddRange(res.items);
-                if (res.items.Length < 1000)
+                result.AddRange(res[0].items);
+                if (res[0].items.Length < 1000)
                     break;
             }
             return result.ToList();
         }
         public async Task<List<Group>> GetPrivateGroup(int page, int count = 1000)
         {
-            var res = await GET<Groups>(3, "groups", new Dictionary<string, string>
+            var res = await GET<Groups[]>(3, "groups", new Dictionary<string, string>
             {
                 { "with_archived", "true" },
                 { "count", count.ToString() },
                 { "page", page.ToString() }
             });
-            if (res == null || res.items == null)
+            if (res == null || res.Length == 0 || res[0] == null || res[0].items == null)
                 return new List<Group>();
-            return res.items.ToList();
+            return res[0].items.ToList();
         }
 
         public async Task<Group> GetGroup(string group_id)

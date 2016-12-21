@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BasicAPI.cs" />
+    <Compile Include="GroupStreamingAPI.cs" />
     <Compile Include="Json\Asset.cs" />
     <Compile Include="Json\AssetResult.cs" />
     <Compile Include="Json\BlockingUsersResult.cs" />
