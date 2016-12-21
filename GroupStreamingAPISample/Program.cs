@@ -21,7 +21,7 @@ namespace GroupStreamingAPISample
             stream.AddHandler(group_id, (LobiAPI.StreamArchiveEventHandler)Archive);
             stream.AddHandler(group_id, (LobiAPI.StreamConnectedEvent)Connected);
             stream.AddHandler(group_id, (LobiAPI.StreamDisconnectedEvent)Disconnected);
-            stream.AddHandler(group_id, (LobiAPI.StreamFailConnectEvent)FailConnect);
+            stream.AddHandler(group_id, FailConnect);
             stream.StreamConnect(group_id);
             Console.Clear();
             Console.WriteLine("エンターで終了します");
