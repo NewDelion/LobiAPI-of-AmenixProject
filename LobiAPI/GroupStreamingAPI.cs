@@ -11,6 +11,7 @@ using Newtonsoft.Json.Linq;
 
 namespace LobiAPI
 {
+    #region StreamEventHandler
     public delegate void StreamChatEventHandler(string group_id, Chat chat);
     public delegate void StreamChatDeletedEventHandler(string group_id, string chat_id);
     public delegate void StreamPartEventHandler(string group_id, User user);
@@ -18,6 +19,7 @@ namespace LobiAPI
     public delegate void StreamConnectedEvent(string group_id);
     public delegate void StreamDisconnectedEvent(string group_id);
     public delegate void StreamFailConnectEvent(string group_id, Exception ex);
+    #endregion
 
     public class GroupStreamingAPI
     {
@@ -35,14 +37,12 @@ namespace LobiAPI
                 throw new Exception("既に指定されたグループのストリームが登録されています");
             StreamCollection.Add(group_id, new GroupStream(group_id, AccessToken) { RetryLimit = -1 });
         }
-
         public void StreamConnect(string group_id)
         {
             if (!StreamExists(group_id))
                 throw new Exception("指定されたグループのストリームは登録されていません");
             StreamCollection[group_id].Connect();//既に接続されていた場合、例外が飛んでくる
         }
-
         public void StreamClose(string group_id)
         {
             if (!StreamExists(group_id))
@@ -50,10 +50,15 @@ namespace LobiAPI
             StreamCollection[group_id].Disconnect();//接続されていない場合、例外が飛んでくる
             StreamCollection.Remove(group_id);
         }
-
         public bool StreamExists(string group_id)
         {
             return StreamCollection.ContainsKey(group_id);
+        }
+        public bool StreamConnected(string group_id)
+        {
+            if (!StreamExists(group_id))
+                throw new Exception("指定されたグループのストリームは登録されていません");
+            return StreamCollection[group_id].Connected;
         }
 
         #region AddHandler
@@ -241,7 +246,7 @@ namespace LobiAPI
                 //boundary
                 await reader.ReadLineAsync().WithCancellation(token);
                 token.ThrowIfCancellationRequested();
-                //Content-Type
+                //Content-Type(イベントが発生するか定期タイムスタンプが来るまで止まる。逆に言うとEmpty以降はawait要らないかも)
                 await reader.ReadLineAsync().WithCancellation(token);
                 token.ThrowIfCancellationRequested();
                 //Empty
