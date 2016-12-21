@@ -85,7 +85,7 @@ namespace LobiAPI
         {
             if (!StreamExists(group_id))
                 throw new KeyNotFoundException("指定されたグループIDのストリームはありません。");
-            StreamCollection[group_id].ConnectedEvet += handler;
+            StreamCollection[group_id].ConnectedEvent += handler;
         }
         public void AddHandler(string group_id, StreamDisconnectedEvent handler)
         {
@@ -104,7 +104,7 @@ namespace LobiAPI
         private class GroupStream
         {
             #region イベント
-            public event StreamConnectedEvent ConnectedEvet;
+            public event StreamConnectedEvent ConnectedEvent;
             public event StreamDisconnectedEvent DisconnectedEvent;
             public event StreamFailConnectEvent FailConnectEvent;
             public event StreamChatEventHandler ChatEvent;
@@ -189,7 +189,7 @@ namespace LobiAPI
                             {
                                 i = 0;//カウンタ初期化
                                 Connected = true;//Connected!!
-                                ConnectedEvet?.Invoke(GroupID);
+                                ConnectedEvent?.Invoke(GroupID);
                                 while (!reader.EndOfStream)
                                 {
                                     token = new CancellationTokenSource();//トークン初期化
