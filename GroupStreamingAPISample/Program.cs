@@ -24,8 +24,11 @@ namespace GroupStreamingAPISample
             stream.AddHandler(group_id, FailConnect);
             stream.StreamConnect(group_id);
             Console.Clear();
-            Console.WriteLine("エンターで終了します");
+            Console.WriteLine("エンターでストリームを閉じます");
             Console.ReadLine();
+            stream.StreamClose(group_id);
+            Console.WriteLine("press any key to exit...");
+            Console.ReadKey(true);
         }
 
         static void Login(LobiAPI.BasicAPI api)
