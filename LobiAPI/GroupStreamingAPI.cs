@@ -209,7 +209,13 @@ namespace LobiAPI
                             Connected = false;
                             DisconnectedEvent?.Invoke(GroupID);
                         }
-                        catch (OperationCanceledException) { return; }
+                        catch (OperationCanceledException)
+                        {
+                            token = null;
+                            Connected = false;
+                            DisconnectedEvent?.Invoke(GroupID);
+                            return;
+                        }
                         catch (Exception ex)
                         {
                             if (Connected)
