@@ -12,6 +12,7 @@ namespace LobiAPI.Json
         public string description { get; set; }
         public GroupBookmarkInfo group_bookmark_info { get; set; }
         public string icon { get; set; }
+        public User invited_by { get; set; }
         public int? is_archived { get; set; }
         public int? is_authorized { get; set; }
         public int? is_notice { get; set; }

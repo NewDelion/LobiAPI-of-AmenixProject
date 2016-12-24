@@ -179,6 +179,14 @@ namespace LobiAPI
             return result;
         }
 
+        /// <summary>
+        /// 招待されているグループ
+        /// </summary>
+        public async Task<Groups> GetInvited()
+        {
+            return await GET<Groups>(1, string.Format("groups/invited"));
+        }
+
         public async Task<List<Group>> GetPublicGroupAll()
         {
             List<Group> result = new List<Group>();
@@ -479,6 +487,17 @@ namespace LobiAPI
             return await POST<RequestResult>(1, string.Format("group/{0}/chats/remove", group_id), new Dictionary<string, string> { { "id", chat_id } });
         }
 
+        public async Task<Group> Join(string group_id)
+        {
+            return await POST<Group>(1, string.Format("group/{0}/join", group_id), new Dictionary<string, string>());
+        }
+        /// <summary>
+        /// 招待を拒否
+        /// </summary>
+        public async Task<RequestResult> RefuseInvitation(string group_id)
+        {
+            return await POST<RequestResult>(1, string.Format("group/{0}/refuse_invitation", group_id), new Dictionary<string, string>());
+        }
         public async Task<RequestResult> Kick(string group_id, string user_id)
         {
             return await POST<RequestResult>(1, string.Format("group/{0}/kick", group_id), new Dictionary<string, string> { { "target_user", user_id } });
