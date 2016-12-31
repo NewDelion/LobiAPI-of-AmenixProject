@@ -50,6 +50,23 @@ namespace LobiAPI
             StreamCollection[group_id].Disconnect();//接続されていない場合、例外が飛んでくる
             StreamCollection.Remove(group_id);
         }
+        public void StreamCloseOther(string group_id)
+        {
+            foreach (var id in StreamCollection.Select(d=>d.Key).ToArray())
+            {
+                if (id.Equals(group_id))
+                    continue;
+                StreamCollection[id].Disconnect();
+                StreamCollection.Remove(id);
+            }
+        }
+        public void StreamCloseAll()
+        {
+            foreach (var stream in StreamCollection)
+                if (stream.Value.Connected)
+                    stream.Value.Disconnect();
+            StreamCollection.Clear();
+        }
         public bool StreamExists(string group_id)
         {
             return StreamCollection.ContainsKey(group_id);
@@ -59,6 +76,10 @@ namespace LobiAPI
             if (!StreamExists(group_id))
                 throw new Exception("指定されたグループのストリームは登録されていません");
             return StreamCollection[group_id].Connected;
+        }
+        public int StreamCount()
+        {
+            return StreamCollection.Count;
         }
 
         #region AddHandler

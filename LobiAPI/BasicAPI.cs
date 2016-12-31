@@ -19,7 +19,7 @@ namespace LobiAPI
         private readonly string UserAgent = "LobiAPI-of-AmenixProject";
         private readonly string platform = "android";
         private string DeviceUUID = "";
-        public string Token { get; private set; }
+        public string Token { get; set; }
 
         private async Task<string> GetSpell(string mail, string password)
         {

@@ -8,7 +8,7 @@ namespace LobiAPI.Json
 {
     public class Reply
     {
-        public Chat[] chats { get; set; }
+        public List<Chat> chats { get; set; }
         public int? count { get; set; }
     }
 }
