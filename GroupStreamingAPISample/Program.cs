@@ -100,7 +100,7 @@ namespace GroupStreamingAPISample
             Console.WriteLine("チャットが削除されました({0})", chat_id);
         }
 
-        static void Part(string group_id, LobiAPI.Json.User user)
+        static void Part(string group_id, LobiAPI.Json.UserMinimal user)
         {
             Console.WriteLine("{0}さんがグループから抜けました", user.name);
         }

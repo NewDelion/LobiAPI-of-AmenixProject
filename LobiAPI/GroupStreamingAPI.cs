@@ -11,10 +11,13 @@ using Newtonsoft.Json.Linq;
 
 namespace LobiAPI
 {
+    /**
+     * ストリームに流れてくるユーザ情報はUserMinimal
+     */
     #region StreamEventHandler
     public delegate void StreamChatEventHandler(string group_id, Chat chat);
     public delegate void StreamChatDeletedEventHandler(string group_id, string chat_id);
-    public delegate void StreamPartEventHandler(string group_id, User user);
+    public delegate void StreamPartEventHandler(string group_id, UserMinimal user);
     public delegate void StreamArchiveEventHandler(string group_id);
     public delegate void StreamConnectedEvent(string group_id);
     public delegate void StreamDisconnectedEvent(string group_id);
@@ -226,7 +229,7 @@ namespace LobiAPI
                                     else if (ev == "chat_deleted")
                                         ChatDeletedEvent?.Invoke(GroupID, jobj["id"].ToString());
                                     else if (ev == "part")
-                                        PartEvent?.Invoke(GroupID, JsonConvert.DeserializeObject<User>(jobj["user"].ToString()));
+                                        PartEvent?.Invoke(GroupID, JsonConvert.DeserializeObject<UserMinimal>(jobj["user"].ToString()));
                                     else if (ev == "archive")
                                         ArchiveEvent?.Invoke(GroupID);
                                 }
