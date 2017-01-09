@@ -36,8 +36,9 @@ namespace LobiAPI
                 handler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
                 handler.AllowAutoRedirect = false;
 
-                var res1 = await client.GetAsync("https://lobi.co/inapp/signin/password?webview=1");//Cookie & csrf_token 
-                string source1 = await res1.Content.ReadAsStringAsync();
+                string source1 = null;
+                using (var res1 = await client.GetAsync("https://lobi.co/inapp/signin/password?webview=1")) //Cookie & csrf_token 
+                    source1 = await res1.Content.ReadAsStringAsync();
                 string csrf_token = Pattern.get_string(source1, Pattern.csrf_token, "\"");
                 client.DefaultRequestHeaders.Add("Referer", "https://lobi.co/inapp/signin/password?webview=1");
                 client.DefaultRequestHeaders.Add("Origin", "https://lobi.co");
@@ -47,10 +48,12 @@ namespace LobiAPI
                     { "email", mail },
                     { "password", password }
                 });
-                var res2 = await client.PostAsync("https://lobi.co/inapp/signin/password", post_data);//spell
-                string key = "nakamapbridge://signin?spell=";
-                if (res2.Headers.Location != null && res2.Headers.Location.OriginalString.IndexOf(key) == 0 && res2.Headers.Location.OriginalString.Length > key.Length)
-                    return res2.Headers.Location.OriginalString.Substring(key.Length);
+                using (var res2 = await client.PostAsync("https://lobi.co/inapp/signin/password", post_data))//spell
+                {
+                    string key = "nakamapbridge://signin?spell=";
+                    if (res2.Headers.Location != null && res2.Headers.Location.OriginalString.IndexOf(key) == 0 && res2.Headers.Location.OriginalString.Length > key.Length)
+                        return res2.Headers.Location.OriginalString.Substring(key.Length);
+                }
             }
             return "";
         }
@@ -74,9 +77,11 @@ namespace LobiAPI
                     { "spell", spell },
                     { "lang", "ja" }
                 });
-                var response = await client.PostAsync("https://api.lobi.co/1/signin_confirmation", post_data);
-                string source = await response.Content.ReadAsStringAsync();
-                return JsonConvert.DeserializeObject<User>(source).token;
+                using (var response = await client.PostAsync("https://api.lobi.co/1/signin_confirmation", post_data))
+                {
+                    string source = await response.Content.ReadAsStringAsync();
+                    return JsonConvert.DeserializeObject<User>(source).token;
+                }
             }
         }
 
