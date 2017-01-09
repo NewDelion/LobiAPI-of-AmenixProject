@@ -419,11 +419,13 @@ namespace LobiAPI
                         throw new Exception("この画像フォーマットは対応していません");
                     asset.Headers.ContentType = new MediaTypeHeaderValue(content_type);
                     post_data.Add(asset, "\"asset\"", "\"" + Path.GetFileName(file) + "\"");
-                    var res = await client.PostAsync("https://api.lobi.co/1/assets", post_data);
-                    if (res.StatusCode != HttpStatusCode.OK)
-                        throw new RequestAPIException(new ErrorObject(res));
-                    string content = await res.Content.ReadAsStringAsync();
-                    result.Add(JsonConvert.DeserializeObject<AssetResult>(content));
+                    using (var res = await client.PostAsync("https://api.lobi.co/1/assets", post_data))
+                    {
+                        if (res.StatusCode != HttpStatusCode.OK)
+                            throw new RequestAPIException(new ErrorObject(res));
+                        string content = await res.Content.ReadAsStringAsync();
+                        result.Add(JsonConvert.DeserializeObject<AssetResult>(content));
+                    }
                 }
             }
             return result;
