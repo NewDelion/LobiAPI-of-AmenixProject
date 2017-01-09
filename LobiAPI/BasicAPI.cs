@@ -534,11 +534,12 @@ namespace LobiAPI
                 client.DefaultRequestHeaders.Add("Host", "api.lobi.co");
                 handler.AutomaticDecompression = DecompressionMethods.GZip;
                 string url = string.Format("https://api.lobi.co/{0}/{1}?platform={2}&lang=ja&token={3}{4}", version, request_url, platform, Token, query == null ? "" : string.Join("", query.Select(d => string.Format("&{0}={1}", WebUtility.UrlEncode(d.Key), WebUtility.UrlEncode(d.Value)))));
-                var res = await client.GetAsync(url);
-                if (res.StatusCode != HttpStatusCode.OK)
-                    throw new RequestAPIException(new ErrorObject(res));
-                string result = await res.Content.ReadAsStringAsync();
-                return JsonConvert.DeserializeObject<T>(result);
+                using (var res = await client.GetAsync(url))
+                {
+                    if (res.StatusCode != HttpStatusCode.OK)
+                        throw new RequestAPIException(new ErrorObject(res));
+                    return JsonConvert.DeserializeObject<T>(await res.Content.ReadAsStringAsync());
+                }
             }
         }
         private async Task<T> POST<T>(int version, string request_url, Dictionary<string, string> query)
@@ -558,11 +559,13 @@ namespace LobiAPI
                     { "lang", "ja" },
                     { "token", Token }
                 }.Concat(query));
-                var res = await client.PostAsync(url, post_data);
-                if (res.StatusCode != HttpStatusCode.OK)
-                    throw new RequestAPIException(new ErrorObject(res));
-                string result = await res.Content.ReadAsStringAsync();
-                return JsonConvert.DeserializeObject<T>(result);
+                using (var res = await client.PostAsync(url, post_data))
+                {
+                    if (res.StatusCode != HttpStatusCode.OK)
+                        throw new RequestAPIException(new ErrorObject(res));
+                    string result = await res.Content.ReadAsStringAsync();
+                    return JsonConvert.DeserializeObject<T>(result);
+                }
             }
         }
         private async Task<string> POST_TEST(int version, string request_url, Dictionary<string, string> query)
@@ -582,11 +585,13 @@ namespace LobiAPI
                     { "lang", "ja" },
                     { "token", Token }
                 }.Concat(query));
-                var res = await client.PostAsync(url, post_data);
-                if (res.StatusCode != HttpStatusCode.OK)
-                    throw new RequestAPIException(new ErrorObject(res));
-                string result = await res.Content.ReadAsStringAsync();
-                return result;
+                using (var res = await client.PostAsync(url, post_data))
+                {
+                    if (res.StatusCode != HttpStatusCode.OK)
+                        throw new RequestAPIException(new ErrorObject(res));
+                    string result = await res.Content.ReadAsStringAsync();
+                    return result;
+                }
             }
         }
 
