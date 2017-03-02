@@ -50,7 +50,7 @@ namespace LobiAPI.Utils
 
         public static string SizeChange(string url, string size)
         {
-            return System.Text.RegularExpressions.Regex.Replace(url, @"_[0-9]+\.(gif|jpg|png)", string.Format("_{0}.$1", size));
+            return System.Text.RegularExpressions.Regex.Replace(url, @"_[0-9]+\.(gif|jpg|png)", $"_{size}.$1");
         }
     }
 }

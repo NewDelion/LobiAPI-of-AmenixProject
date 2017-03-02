@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Net;
@@ -94,29 +95,55 @@ namespace LobiAPI
             Token = await GetToken(DeviceUUID, spell);
             return Token != null && (Token ?? "").Length > 0;
         }
-
-        public async Task<Me> GetMe()
+        public async void Login(string mail, string password, Action<bool> callback)
         {
-            return await GET<Me>(1, "me");
+            string spell = await GetSpell(mail, password);
+            if (spell == null || spell == "")
+            {
+                callback(false);
+                return;
+            }
+            DeviceUUID = Guid.NewGuid().ToString();
+            Token = await GetToken(DeviceUUID, spell);
+            callback(true);
+        }
+
+        public Task<User> GetMe()
+        {
+            return GetMe(CancellationToken.None);
+        }
+        public async Task<User> GetMe(CancellationToken cancelToken)
+        {
+            return await GET<User>(1, "me", cancelToken);
         }
         
         /// <summary>
         /// フォロー取得
         /// </summary>
-        public async Task<Contacts> GetContacts()
+        public Task<Contacts> GetContacts()
         {
-            return await GET<Contacts>(3, "me/contacts");
+            return GetContacts(CancellationToken.None);
+        }
+        public async Task<Contacts> GetContacts(CancellationToken cancelToken)
+        {
+            return await GET<Contacts>(3, "me/contacts", cancelToken);
         }
         /// <summary>
         /// 指定したユーザのフォロー取得
         /// </summary>
-        public async Task<List<User>> GetContacts(string user_id)
+        public Task<List<User>> GetContacts(string user_id)
+        {
+            return GetContacts(user_id, CancellationToken.None);
+        }
+        public async Task<List<User>> GetContacts(string user_id, CancellationToken cancelToken)
         {
             List<User> result = new List<User>();
             Dictionary<string, string> data = new Dictionary<string, string>();
             while (true)
             {
-                var res = await GET<Contacts>(1, string.Format("user/{0}/contacts", user_id), data);
+                var res = await GET<Contacts>(1, string.Format("user/{0}/contacts", user_id), cancelToken, data);
+                if (cancelToken.IsCancellationRequested == true)
+                    return null;
                 if (res == null || res.users == null || res.users.Length == 0)
                     break;
                 result.AddRange(res.users);
@@ -127,26 +154,38 @@ namespace LobiAPI
                 else
                     data.Add("cursor", res.next_cursor);
             }
+            if (cancelToken.IsCancellationRequested == true)
+                return null;
             return result;
         }
 
         /// <summary>
         /// フォロワー取得
         /// </summary>
-        public async Task<Followers> GetFollowers()
+        public Task<Followers> GetFollowers()
         {
-            return await GET<Followers>(2, "me/followers");
+            return GetFollowers(CancellationToken.None);
+        }
+        public async Task<Followers> GetFollowers(CancellationToken cancelToken)
+        {
+            return await GET<Followers>(2, "me/followers", cancelToken);
         }
         /// <summary>
         /// 指定したユーザのフォロワー取得
         /// </summary>
-        public async Task<List<User>> GetFollowers(string user_id)
+        public Task<List<User>> GetFollowers(string user_id)
+        {
+            return GetFollowers(user_id, CancellationToken.None);
+        }
+        public async Task<List<User>> GetFollowers(string user_id, CancellationToken cancelToken)
         {
             List<User> result = new List<User>();
             Dictionary<string, string> data = new Dictionary<string, string>();
             while (true)
             {
-                var res = await GET<Contacts>(1, string.Format("user/{0}/followers", user_id), data);
+                var res = await GET<Contacts>(1, string.Format("user/{0}/followers", user_id), cancelToken, data);
+                if (cancelToken.IsCancellationRequested == true)
+                    return null;
                 if (res == null || res.users == null || res.users.Length == 0)
                     break;
                 result.AddRange(res.users);
@@ -157,20 +196,32 @@ namespace LobiAPI
                 else
                     data.Add("cursor", res.next_cursor);
             }
+            if (cancelToken.IsCancellationRequested == true)
+                return null;
             return result;
         }
 
-        public async Task<User> GetUser(string user_id)
+        public Task<User> GetUser(string user_id)
         {
-            return await GET<User>(1, string.Format("user/{0}", user_id), new Dictionary<string, string> { { "fields", "is_blocked" } });
+            return GetUser(user_id, CancellationToken.None);
         }
-        public async Task<List<User>> GetBlockingUsersAll()
+        public async Task<User> GetUser(string user_id, CancellationToken cancelToken)
+        {
+            return await GET<User>(1, string.Format("user/{0}", user_id), cancelToken, new Dictionary<string, string> { { "fields", "is_blocked,public_groups_count" } });
+        }
+        public Task<List<User>> GetBlockingUsersAll()
+        {
+            return GetBlockingUsersAll(CancellationToken.None);
+        }
+        public async Task<List<User>> GetBlockingUsersAll(CancellationToken cancelToken)
         {
             List<User> result = new List<User>();
             Dictionary<string, string> data = new Dictionary<string, string>();
             while (true)
             {
-                var res = await GET<BlockingUsersResult>(2, "me/blocking_users", data);
+                var res = await GET<Users>(2, "me/blocking_users", cancelToken, data);
+                if (cancelToken.IsCancellationRequested == true)
+                    return null;
                 if (res == null || res.users == null || res.users.Length == 0)
                     break;
                 result.AddRange(res.users);
@@ -181,44 +232,64 @@ namespace LobiAPI
                 else
                     data.Add("cursor", res.next_cursor);
             }
+            if (cancelToken.IsCancellationRequested == true)
+                return null;
             return result;
         }
 
         /// <summary>
         /// 招待されているグループ
         /// </summary>
-        public async Task<Groups> GetInvited()
+        public Task<Groups> GetInvited()
         {
-            return await GET<Groups>(1, string.Format("groups/invited"));
+            return GetInvited(CancellationToken.None);
+        }
+        public async Task<Groups> GetInvited(CancellationToken cancelToken)
+        {
+            return await GET<Groups>(1, string.Format("groups/invited"), cancelToken);
         }
 
-        public async Task<List<Group>> GetPublicGroupAll()
+        public Task<List<Group>> GetPublicGroupAll()
+        {
+            return GetPublicGroupAll(CancellationToken.None);
+        }
+        public async Task<List<Group>> GetPublicGroupAll(CancellationToken cancelToken)
         {
             List<Group> result = new List<Group>();
             int page = 1;
             while (true)
             {
-                var res = await GET<Groups[]>(1, "public_groups", new Dictionary<string, string>
+                var res = await GET<Groups[]>(1, "public_groups", cancelToken, new Dictionary<string, string>
                 {
                     { "with_archived", "true" },
                     { "count", "1000" },
                     { "page", page++.ToString() }
                 });
+                if (cancelToken.IsCancellationRequested == true)
+                    return null;
                 if (res == null || res.Length == 0 || res[0] == null || res[0].items == null || res[0].items.Length == 0)
                     break;
                 result.AddRange(res[0].items);
                 if (res[0].items.Length < 1000)
                     break;
             }
+            if (cancelToken.IsCancellationRequested == true)
+                return null;
             return result.ToList();
         }
-        public async Task<List<Group>> GetPublicGroupAll(string user_id)
+        public Task<List<Group>> GetPublicGroupAll(string user_id)
+        {
+            return GetPublicGroupAll(user_id, CancellationToken.None);
+        }
+        public async Task<List<Group>> GetPublicGroupAll(string user_id, CancellationToken cancelToken)
         {
             List<Group> result = new List<Group>();
             Dictionary<string, string> data = new Dictionary<string, string> { { "with_archived", "true" } };
             while (true)
             {
-                var res = await GET<VisibleGroups>(1, string.Format("user/{0}/visible_groups", user_id), data);
+                var res = await GET<VisibleGroups>(1, string.Format("user/{0}/visible_groups", user_id), cancelToken, data);
+                if (cancelToken.IsCancellationRequested == true)
+                    return null;
                 if (res == null || res.public_groups == null || res.public_groups.Length == 0)
                     break;
                 result.AddRange(res.public_groups);
@@ -229,11 +300,17 @@ namespace LobiAPI
                 else
                     data.Add("cursor", res.next_cursor);
             }
+            if (cancelToken.IsCancellationRequested == true)
+                return null;
             return result;
         }
-        public async Task<List<Group>> GetPublicGroup(int page, int count = 1000)
+        public Task<List<Group>> GetPublicGroup(int page, int count)
         {
-            var res = await GET<Groups[]>(1, "public_groups", new Dictionary<string, string>
+            return GetPublicGroup(page, count, CancellationToken.None);
+        }
+        public async Task<List<Group>> GetPublicGroup(int page, int count, CancellationToken cancelToken)
+        {
+            var res = await GET<Groups[]>(1, "public_groups", cancelToken, new Dictionary<string, string>
             {
                 { "with_archived", "true" },
                 { "count", count.ToString() },
@@ -244,29 +321,41 @@ namespace LobiAPI
             return res[0].items.ToList();
         }
 
-        public async Task<List<Group>> GetPrivateGroupAll()
+        public Task<List<Group>> GetPrivateGroupAll()
+        {
+            return GetPrivateGroupAll(CancellationToken.None);
+        }
+        public async Task<List<Group>> GetPrivateGroupAll(CancellationToken cancelToken)
         {
             List<Group> result = new List<Group>();
             int page = 1;
             while (true)
             {
-                var res = await GET<Groups[]>(3, "groups", new Dictionary<string, string>
+                var res = await GET<Groups[]>(3, "groups", cancelToken, new Dictionary<string, string>
                 {
                     { "with_archived", "true" },
                     { "count", "1000" },
                     { "page", page++.ToString() }
                 });
+                if (cancelToken.IsCancellationRequested == true)
+                    return null;
                 if (res == null || res.Length == 0 || res[0] == null || res[0].items == null || res[0].items.Length == 0)
                     break;
                 result.AddRange(res[0].items);
                 if (res[0].items.Length < 1000)
                     break;
             }
-            return result.ToList();
+            if (cancelToken.IsCancellationRequested == true)
+                return null;
+            return result;
         }
-        public async Task<List<Group>> GetPrivateGroup(int page, int count = 1000)
+        public Task<List<Group>> GetPrivateGroup(int page, int count)
         {
-            var res = await GET<Groups[]>(3, "groups", new Dictionary<string, string>
+            return GetPrivateGroup(page, count, CancellationToken.None);
+        }
+        public async Task<List<Group>> GetPrivateGroup(int page, int count, CancellationToken cancelToken)
+        {
+            var res = await GET<Groups[]>(3, "groups", cancelToken, new Dictionary<string, string>
             {
                 { "with_archived", "true" },
                 { "count", count.ToString() },
@@ -277,37 +366,55 @@ namespace LobiAPI
             return res[0].items.ToList();
         }
 
-        public async Task<Group> GetGroup(string group_id)
+        public Task<Group> GetGroup(string group_id)
         {
-            return await GET<Group>(2, string.Format("group/{0}", group_id), new Dictionary<string, string>
+            return GetGroup(group_id, CancellationToken.None);
+        }
+        public async Task<Group> GetGroup(string group_id, CancellationToken cancelToken)
+        {
+            return await GET<Group>(2, string.Format("group/{0}", group_id), cancelToken, new Dictionary<string, string>
             {
                 { "members_count", "1" },
-                { "fields", "subleaders" }
+                { "fields", "subleaders,group_bookmark_info" }
             });
         }
-        public async Task<User> GetGroupLeader(string group_id)
+        public Task<UserSmall> GetGroupLeader(string group_id)
         {
-            return (await GET<Members>(2, string.Format("group/{0}/members", group_id), new Dictionary<string, string>
+            return GetGroupLeader(group_id, CancellationToken.None);
+        }
+        public async Task<UserSmall> GetGroupLeader(string group_id, CancellationToken cancelToken)
+        {
+            return (await GET<Members>(2, string.Format("group/{0}/members", group_id), cancelToken, new Dictionary<string, string>
             {
                 { "members_count", "1" },
                 { "fields", "owner" }
             })).owner;
         }
-        public async Task<List<User>> GetGroupSubleaders(string group_id)
+        public Task<List<UserSmall>> GetGroupSubleaders(string group_id)
         {
-            return ((await GET<Members>(2, string.Format("group/{0}/members", group_id), new Dictionary<string, string>
+            return GetGroupSubleaders(group_id, CancellationToken.None);
+        }
+        public async Task<List<UserSmall>> GetGroupSubleaders(string group_id, CancellationToken cancelToken)
+        {
+            return ((await GET<Members>(2, string.Format("group/{0}/members", group_id), cancelToken, new Dictionary<string, string>
             {
                 { "members_count", "1" },
                 { "fields", "subleaders" }
-            })).subleaders ?? new User[0]).ToList();
+            })).subleaders ?? new UserSmall[0]).ToList();
         }
-        public async Task<List<User>> GetGroupMembersAll(string group_id)
+        public Task<List<UserSmall>> GetGroupMembersAll(string group_id)
         {
-            List<User> result = new List<User>();
-            Dictionary<string, string> data = new Dictionary<string, string> { { "members_count", "1000" } };
+            return GetGroupMembersAll(group_id, CancellationToken.None);
+        }
+        public async Task<List<UserSmall>> GetGroupMembersAll(string group_id, CancellationToken cancelToken)
+        {
+            var result = new List<UserSmall>();
+            var data = new Dictionary<string, string> { { "members_count", "1000" } };
             while (true)
             {
-                var res = await GET<Members>(1, string.Format("group/{0}/members", group_id), data);
+                var res = await GET<Members>(1, $"group/{group_id}/members", cancelToken, data);
+                if (cancelToken.IsCancellationRequested)
+                    return null;
                 if (res == null || res.members == null || res.members.Length == 0)
                     break;
                 result.AddRange(res.members);
@@ -318,30 +425,45 @@ namespace LobiAPI
                 else
                     data.Add("cursor", res.next_cursor);
             }
+            if (cancelToken.IsCancellationRequested)
+                return null;
             return result;
         }
 
-        public async Task<List<Chat>> GetThreads(string group_id, int count = 20, string older_than = null, string newer_than = null)
+        public Task<List<Chat>> GetThreads(string group_id, int count, string older_than = null, string newer_than = null)
+        {
+            return GetThreads(group_id, count, CancellationToken.None, older_than, newer_than);
+        }
+        public async Task<List<Chat>> GetThreads(string group_id, int count, CancellationToken cancelToken, string older_than = null, string newer_than = null)
         {
             Dictionary<string, string> data = new Dictionary<string, string> { { "count", count.ToString() } };
             if (older_than != null && older_than != "")
                 data.Add("older_than", older_than);
             if (newer_than != null && newer_than != "")
                 data.Add("newer_than", newer_than);
-            return await GET<List<Chat>>(2, string.Format("group/{0}/chats", group_id), data);
+            return await GET<List<Chat>>(2, string.Format("group/{0}/chats", group_id), cancelToken, data);
         }
-        public async Task<Replies> GetRepliesAll(string group_id, string chat_id)
+        public Task<Reply> GetRepliesAll(string group_id, string chat_id)
         {
-            return await GET<Replies>(1, string.Format("group/{0}/chats/replies", group_id), new Dictionary<string, string> { { "to", chat_id } });
+            return GetRepliesAll(group_id, chat_id, CancellationToken.None);
         }
-
-        public async Task<List<PokeUserItem>> GetPokesAll(string group_id, string chat_id)
+        public async Task<Reply> GetRepliesAll(string group_id, string chat_id, CancellationToken cancelToken)
+        {
+            return await GET<Reply>(1, string.Format("group/{0}/chats/replies", group_id), cancelToken, new Dictionary<string, string> { { "to", chat_id } });
+        }
+        public Task<List<PokeUserItem>> GetPokesAll(string group_id, string chat_id)
+        {
+            return GetPokesAll(group_id, chat_id, CancellationToken.None);
+        }
+        public async Task<List<PokeUserItem>> GetPokesAll(string group_id, string chat_id, CancellationToken cancelToken)
         {
             List<PokeUserItem> result = new List<PokeUserItem>();
             Dictionary<string, string> data = new Dictionary<string, string> { { "id", chat_id } };
             while (true)
             {
-                var res = await GET<Pokes>(1, string.Format("group/{0}/chats/pokes", group_id), data);
+                var res = await GET<Pokes>(1, string.Format("group/{0}/chats/pokes", group_id), cancelToken, data);
+                if (cancelToken.IsCancellationRequested)
+                    return null;
                 if (res == null || res.users == null || res.users.Length == 0)
                     break;
                 result.AddRange(res.users);
@@ -352,15 +474,21 @@ namespace LobiAPI
                 else
                     data.Add("cursor", res.next_cursor);
             }
+            if (cancelToken.IsCancellationRequested)
+                return null;
             return result;
         }
 
-        public async Task<Notifications> GetNotifications(int count = 20, string cursor = null)
+        public Task<Notifications> GetNotifications(int count, string cursor = null)
+        {
+            return GetNotifications(count, CancellationToken.None, cursor);
+        }
+        public async Task<Notifications> GetNotifications(int count, CancellationToken cancelToken, string cursor = null)
         {
             Dictionary<string, string> data = new Dictionary<string, string> { { "count", count.ToString() } };
             if (cursor != null && cursor != "")
                 data.Add("last_cursor", cursor);
-            return await GET<Notifications>(2, "info/notifications", data);
+            return await GET<Notifications>(2, "info/notifications", cancelToken, data);
         }
 
         public async Task<RequestResult> Like(string group_id, string chat_id)
@@ -389,14 +517,14 @@ namespace LobiAPI
             return await POST<RequestResult>(1, "me/contacts/remove", new Dictionary<string, string> { { "users", user_id } });
         }
 
-        public async Task<List<AssetResult>> Assets(List<string> files)
+        public async Task<List<Asset>> Assets(List<string> files)
         {
             if (files == null || files.Count == 0)
                 throw new ArgumentNullException("ファイルを1枚以上指定してください");
             foreach (string file in files)
                 if (!File.Exists(file))
                     throw new FileNotFoundException();
-            List<AssetResult> result = new List<AssetResult>();
+            var result = new List<Asset>();
             int order = files.Count > 1 ? 0 : -1;
             foreach (string file in files)
             {
@@ -429,7 +557,7 @@ namespace LobiAPI
                         if (res.StatusCode != HttpStatusCode.OK)
                             throw new RequestAPIException(new ErrorObject(res));
                         string content = await res.Content.ReadAsStringAsync();
-                        result.Add(JsonConvert.DeserializeObject<AssetResult>(content));
+                        result.Add(JsonConvert.DeserializeObject<Asset>(content));
                     }
                 }
             }
@@ -531,7 +659,7 @@ namespace LobiAPI
             return await POST<RequestResult>(1, "me/blocking_users/remove", new Dictionary<string, string> { { "users", user_id } });
         }
 
-        private async Task<T> GET<T>(int version, string request_url, Dictionary<string, string> query = null)
+        private async Task<T> GET<T>(int version, string request_url, CancellationToken cancelToken, Dictionary<string, string> query = null)
         {
             using (HttpClientHandler handler = new HttpClientHandler())
             using (HttpClient client = new HttpClient(handler))
@@ -541,15 +669,26 @@ namespace LobiAPI
                 client.DefaultRequestHeaders.Add("Host", "api.lobi.co");
                 handler.AutomaticDecompression = DecompressionMethods.GZip;
                 string url = string.Format("https://api.lobi.co/{0}/{1}?platform={2}&lang=ja&token={3}{4}", version, request_url, platform, Token, query == null ? "" : string.Join("", query.Select(d => string.Format("&{0}={1}", WebUtility.UrlEncode(d.Key), WebUtility.UrlEncode(d.Value)))));
-                using (var res = await client.GetAsync(url))
+                try
                 {
-                    if (res.StatusCode != HttpStatusCode.OK)
-                        throw new RequestAPIException(new ErrorObject(res));
-                    return JsonConvert.DeserializeObject<T>(await res.Content.ReadAsStringAsync());
+                    using (var res = await client.GetAsync(url, (CancellationToken)cancelToken))
+                    {
+                        if (res.StatusCode != HttpStatusCode.OK)
+                            throw new RequestAPIException(new ErrorObject(res));
+                        return JsonConvert.DeserializeObject<T>(await res.Content.ReadAsStringAsync());
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    return default(T);
                 }
             }
         }
-        private async Task<T> POST<T>(int version, string request_url, Dictionary<string, string> query)
+        private Task<T> GET<T>(int version, string request_url, Dictionary<string, string> query = null)
+        {
+            return GET<T>(version, request_url, CancellationToken.None, query);
+        }
+        private async Task<T> POST<T>(int version, string request_url, Dictionary<string, string> query, CancellationToken cancelToken)
         {
             if (query == null)
                 throw new ArgumentNullException("queryがnullです");
@@ -566,14 +705,25 @@ namespace LobiAPI
                     { "lang", "ja" },
                     { "token", Token }
                 }.Concat(query));
-                using (var res = await client.PostAsync(url, post_data))
+                try
                 {
-                    if (res.StatusCode != HttpStatusCode.OK)
-                        throw new RequestAPIException(new ErrorObject(res));
-                    string result = await res.Content.ReadAsStringAsync();
-                    return JsonConvert.DeserializeObject<T>(result);
+                    using (var res = await client.PostAsync(url, post_data, cancelToken))
+                    {
+                        if (res.StatusCode != HttpStatusCode.OK)
+                            throw new RequestAPIException(new ErrorObject(res));
+                        string result = await res.Content.ReadAsStringAsync();
+                        return JsonConvert.DeserializeObject<T>(result);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    return default(T);
                 }
             }
+        }
+        private Task<T> POST<T>(int version, string request_url, Dictionary<string, string> query)
+        {
+            return POST<T>(version, request_url, query, CancellationToken.None);
         }
         private async Task<string> POST_TEST(int version, string request_url, Dictionary<string, string> query)
         {

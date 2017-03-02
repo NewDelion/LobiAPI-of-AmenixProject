@@ -6,10 +6,16 @@ using System.Threading.Tasks;
 
 namespace LobiAPI.Json
 {
+    public class Notifications
+    {
+        public string last_cursor { get; set; }
+        public Notification[] notifications { get; set; }
+    }
+
     public class Notification
     {
         public object[] click_hook { get; set; }
-        public long created_date { get; set; }
+        public long? created_date { get; set; }
         public object[] display { get; set; }
         public object[] display_hook { get; set; }
         public string icon { get; set; }
@@ -17,7 +23,7 @@ namespace LobiAPI.Json
         public string link { get; set; }
         public string message { get; set; }
         public string type { get; set; }
-        public User user { get; set; }
+        public UserMinimal user { get; set; }
         public NotificationTitle title { get; set; }
     }
 

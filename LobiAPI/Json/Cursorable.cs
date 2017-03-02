@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 
 namespace LobiAPI.Json
 {
-    public class BlockingUsersResult
+    public abstract class Cursorable
     {
         public string next_cursor { get; set; }
-        public User[] users { get; set; }
     }
 }

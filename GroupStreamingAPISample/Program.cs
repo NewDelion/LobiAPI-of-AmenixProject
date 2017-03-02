@@ -14,15 +14,15 @@ namespace GroupStreamingAPISample
             Login(api);
             string group_id = SelectGroup(api);
             var stream = new LobiAPI.GroupStreamingAPI(api.Token);
-            stream.StreamOpen(group_id);
-            stream.AddHandler(group_id, Chat);
-            stream.AddHandler(group_id, ChatDeleted);
-            stream.AddHandler(group_id, Part);
-            stream.AddHandler(group_id, (LobiAPI.StreamArchiveEventHandler)Archive);
-            stream.AddHandler(group_id, (LobiAPI.StreamConnectedEvent)Connected);
-            stream.AddHandler(group_id, (LobiAPI.StreamDisconnectedEvent)Disconnected);
-            stream.AddHandler(group_id, FailConnect);
-            stream.StreamConnect(group_id);
+            stream.StreamOpen(group_id)
+                .AddHandler(group_id, Chat)
+                .AddHandler(group_id, ChatDeleted)
+                .AddHandler(group_id, Part)
+                .AddHandler(group_id, (LobiAPI.StreamArchiveEventHandler)Archive)
+                .AddHandler(group_id, (LobiAPI.StreamConnectedEvent)Connected)
+                .AddHandler(group_id, (LobiAPI.StreamDisconnectedEvent)Disconnected)
+                .AddHandler(group_id, FailConnect)
+                .StreamConnect(group_id);
             Console.Clear();
             Console.WriteLine("エンターでストリームを閉じます");
             Console.ReadLine();
@@ -92,6 +92,13 @@ namespace GroupStreamingAPISample
 
         static void Chat(string group_id, LobiAPI.Json.Chat chat)
         {
+            if(chat.assets != null && chat.assets.Count() > 0)
+            {
+                foreach(var asset in chat.assets)
+                {
+                    Console.WriteLine(asset.raw_url);
+                }
+            }
             Console.WriteLine(chat.message);
         }
 

@@ -34,11 +34,12 @@ namespace LobiAPI
             this.AccessToken = access_token;
         }
 
-        public void StreamOpen(string group_id)
+        public GroupStreamingAPI StreamOpen(string group_id)
         {
             if (StreamExists(group_id))
                 throw new Exception("既に指定されたグループのストリームが登録されています");
             StreamCollection.Add(group_id, new GroupStream(group_id, AccessToken) { RetryLimit = -1 });
+            return this;
         }
         public void StreamConnect(string group_id)
         {
@@ -86,201 +87,208 @@ namespace LobiAPI
         }
 
         #region AddHandler
-        public void AddHandler(string group_id, StreamChatEventHandler handler)
+        public GroupStreamingAPI AddHandler(string group_id, StreamChatEventHandler handler)
         {
             if (!StreamExists(group_id))
                 throw new KeyNotFoundException("指定されたグループIDのストリームはありません。");
             StreamCollection[group_id].ChatEvent += handler;
+            return this;
         }
-        public void AddHandler(string group_id, StreamChatDeletedEventHandler handler)
+        public GroupStreamingAPI AddHandler(string group_id, StreamChatDeletedEventHandler handler)
         {
             if (!StreamExists(group_id))
                 throw new KeyNotFoundException("指定されたグループIDのストリームはありません。");
             StreamCollection[group_id].ChatDeletedEvent += handler;
+            return this;
         }
-        public void AddHandler(string group_id, StreamPartEventHandler handler)
+        public GroupStreamingAPI AddHandler(string group_id, StreamPartEventHandler handler)
         {
             if (!StreamExists(group_id))
                 throw new KeyNotFoundException("指定されたグループIDのストリームはありません。");
             StreamCollection[group_id].PartEvent += handler;
+            return this;
         }
-        public void AddHandler(string group_id, StreamArchiveEventHandler handler)
+        public GroupStreamingAPI AddHandler(string group_id, StreamArchiveEventHandler handler)
         {
             if (!StreamExists(group_id))
                 throw new KeyNotFoundException("指定されたグループIDのストリームはありません。");
             StreamCollection[group_id].ArchiveEvent += handler;
+            return this;
         }
-        public void AddHandler(string group_id, StreamConnectedEvent handler)
+        public GroupStreamingAPI AddHandler(string group_id, StreamConnectedEvent handler)
         {
             if (!StreamExists(group_id))
                 throw new KeyNotFoundException("指定されたグループIDのストリームはありません。");
             StreamCollection[group_id].ConnectedEvent += handler;
+            return this;
         }
-        public void AddHandler(string group_id, StreamDisconnectedEvent handler)
+        public GroupStreamingAPI AddHandler(string group_id, StreamDisconnectedEvent handler)
         {
             if (!StreamExists(group_id))
                 throw new KeyNotFoundException("指定されたグループIDのストリームはありません。");
             StreamCollection[group_id].DisconnectedEvent += handler;
+            return this;
         }
-        public void AddHandler(string group_id, StreamFailConnectEvent handler)
+        public GroupStreamingAPI AddHandler(string group_id, StreamFailConnectEvent handler)
         {
             if (!StreamExists(group_id))
                 throw new KeyNotFoundException("指定されたグループIDのストリームはありません。");
             StreamCollection[group_id].FailConnectEvent += handler;
+            return this;
         }
         #endregion
+    }
 
-        private class GroupStream
+    public class GroupStream
+    {
+        #region イベント
+        public event StreamConnectedEvent ConnectedEvent;
+        public event StreamDisconnectedEvent DisconnectedEvent;
+        public event StreamFailConnectEvent FailConnectEvent;
+        public event StreamChatEventHandler ChatEvent;
+        public event StreamChatDeletedEventHandler ChatDeletedEvent;
+        public event StreamPartEventHandler PartEvent;
+        public event StreamArchiveEventHandler ArchiveEvent;
+        #endregion
+
+        #region ストリーム情報・設定など
+        /// <summary>
+        /// グループID
+        /// </summary>
+        public readonly string GroupID;
+
+        /// <summary>
+        /// アクセストークン
+        /// </summary>
+        public readonly string AccessToken;
+
+        /// <summary>
+        /// ネットワークの問題などにより予期せずストリームが切断された場合に自動的に再接続するか
+        /// </summary>
+        public bool AutoReconnect { get; set; } = true;
+
+        /// <summary>
+        /// 再接続のリトライ回数制限。-1で制限なし
+        /// </summary>
+        public int RetryLimit { get; set; } = 3;
+
+        /// <summary>
+        /// 再接続のクールタイム
+        /// </summary>
+        public int RetryCoolTimeMilliseconds { get; set; } = 100;
+
+        /// <summary>
+        /// 接続状態
+        /// </summary>
+        public bool Connected { get; private set; } = false;
+
+        /// <summary>
+        /// ストリームのタスクオブジェクト
+        /// </summary>
+        private Task ReaderTask = null;
+
+        /// <summary>
+        /// 読み込みタスクのキャンセルトークン
+        /// </summary>
+        private CancellationTokenSource token = null;
+        #endregion
+
+        public GroupStream(string group_id, string access_token)
         {
-            #region イベント
-            public event StreamConnectedEvent ConnectedEvent;
-            public event StreamDisconnectedEvent DisconnectedEvent;
-            public event StreamFailConnectEvent FailConnectEvent;
-            public event StreamChatEventHandler ChatEvent;
-            public event StreamChatDeletedEventHandler ChatDeletedEvent;
-            public event StreamPartEventHandler PartEvent;
-            public event StreamArchiveEventHandler ArchiveEvent;
-            #endregion
+            this.GroupID = group_id;
+            this.AccessToken = access_token;
+        }
 
-            #region ストリーム情報・設定など
-            /// <summary>
-            /// グループID
-            /// </summary>
-            public readonly string GroupID;
+        public void Connect()
+        {
+            if (Connected)
+                throw new Exception("既に接続されています");
+            ReaderTask = Reader();
+        }
+        public void Disconnect()
+        {
+            if (!Connected)
+                throw new Exception("接続されていません");//要るかな？？
+            token?.Cancel();
+            ReaderTask.Wait(1000);//1秒待ってみようかな(てきとう)
+            ReaderTask = null;
+        }
 
-            /// <summary>
-            /// アクセストークン
-            /// </summary>
-            public readonly string AccessToken;
-
-            /// <summary>
-            /// ネットワークの問題などにより予期せずストリームが切断された場合に自動的に再接続するか
-            /// </summary>
-            public bool AutoReconnect { get; set; } = true;
-
-            /// <summary>
-            /// 再接続のリトライ回数制限。-1で制限なし
-            /// </summary>
-            public int RetryLimit { get; set; } = 3;
-
-            /// <summary>
-            /// 再接続のクールタイム
-            /// </summary>
-            public int RetryCoolTimeMilliseconds { get; set; } = 100;
-
-            /// <summary>
-            /// 接続状態
-            /// </summary>
-            public bool Connected { get; private set; } = false;
-
-            /// <summary>
-            /// ストリームのタスクオブジェクト
-            /// </summary>
-            private Task ReaderTask = null;
-
-            /// <summary>
-            /// 読み込みタスクのキャンセルトークン
-            /// </summary>
-            private CancellationTokenSource token = null;
-            #endregion
-
-            public GroupStream(string group_id, string access_token)
+        private async Task Reader()
+        {
+            using (HttpClient client = new HttpClient { Timeout = Timeout.InfiniteTimeSpan })
             {
-                this.GroupID = group_id;
-                this.AccessToken = access_token;
-            }
-
-            public void Connect()
-            {
-                if (Connected)
-                    throw new Exception("既に接続されています");
-                ReaderTask = Reader();
-            }
-            public void Disconnect()
-            {
-                if (!Connected)
-                    throw new Exception("接続されていません");//要るかな？？
-                token?.Cancel();
-                ReaderTask.Wait(1000);//1秒待ってみようかな(てきとう)
-                ReaderTask = null;
-            }
-
-            private async Task Reader()
-            {
-                using (HttpClient client = new HttpClient { Timeout = Timeout.InfiniteTimeSpan })
+                for (int i = 1; AutoReconnect && (RetryLimit == -1 || i <= RetryLimit); i++)
                 {
-                    for (int i = 1; AutoReconnect && (RetryLimit == -1 || i <= RetryLimit); i++)
+                    try
                     {
-                        try
+                        using (var response = await client.GetAsync($"https://stream.lobi.co/2/group/{GroupID}?token={AccessToken}", HttpCompletionOption.ResponseHeadersRead))
+                        using (var reader = new System.IO.StreamReader(await response.Content.ReadAsStreamAsync()))
                         {
-                            using (var response = await client.GetAsync($"https://stream.lobi.co/2/group/{GroupID}?token={AccessToken}", HttpCompletionOption.ResponseHeadersRead))
-                            using (var reader = new System.IO.StreamReader(await response.Content.ReadAsStreamAsync()))
+                            i = 0;//カウンタ初期化
+                            Connected = true;//Connected!!
+                            ConnectedEvent?.Invoke(GroupID);
+                            while (!reader.EndOfStream)
                             {
-                                i = 0;//カウンタ初期化
-                                Connected = true;//Connected!!
-                                ConnectedEvent?.Invoke(GroupID);
-                                while (!reader.EndOfStream)
-                                {
-                                    token = new CancellationTokenSource();//トークン初期化
-                                    var jobj = await _Read(reader, token.Token);//Jsonデータ読み取り
-                                    var ev = jobj["event"]?.ToString();
-                                    if (ev == "chat")
-                                        ChatEvent?.Invoke(GroupID, JsonConvert.DeserializeObject<Chat>(jobj["chat"].ToString()));
-                                    else if (ev == "chat_deleted")
-                                        ChatDeletedEvent?.Invoke(GroupID, jobj["id"].ToString());
-                                    else if (ev == "part")
-                                        PartEvent?.Invoke(GroupID, JsonConvert.DeserializeObject<UserMinimal>(jobj["user"].ToString()));
-                                    else if (ev == "archive")
-                                        ArchiveEvent?.Invoke(GroupID);
-                                }
+                                token = new CancellationTokenSource();//トークン初期化
+                                var jobj = await _Read(reader, token.Token);//Jsonデータ読み取り
+                                var ev = jobj["event"]?.ToString();
+                                if (ev == "chat")
+                                    ChatEvent?.Invoke(GroupID, JsonConvert.DeserializeObject<Chat>(jobj["chat"].ToString()));
+                                else if (ev == "chat_deleted")
+                                    ChatDeletedEvent?.Invoke(GroupID, jobj["id"].ToString());
+                                else if (ev == "part")
+                                    PartEvent?.Invoke(GroupID, JsonConvert.DeserializeObject<UserMinimal>(jobj["user"].ToString()));
+                                else if (ev == "archive")
+                                    ArchiveEvent?.Invoke(GroupID);
                             }
-                            token = null;
-                            Connected = false;
-                            DisconnectedEvent?.Invoke(GroupID);
                         }
-                        catch (OperationCanceledException)
-                        {
-                            token = null;
-                            Connected = false;
-                            DisconnectedEvent?.Invoke(GroupID);
-                            return;
-                        }
-                        catch (Exception ex)
-                        {
-                            if (Connected)
-                            {
-                                token = null;
-                                Connected = false;
-                                DisconnectedEvent?.Invoke(GroupID);//必要かな？？
-                            }
-                            else
-                            {
-                                token = null;
-                                Connected = false;//一応ね
-                            }
-                            FailConnectEvent?.Invoke(GroupID, ex);
-                        }
-                        Thread.Sleep(RetryCoolTimeMilliseconds);//クールタイム
+                        token = null;
+                        Connected = false;
+                        DisconnectedEvent?.Invoke(GroupID);
                     }
+                    catch (OperationCanceledException)
+                    {
+                        token = null;
+                        Connected = false;
+                        DisconnectedEvent?.Invoke(GroupID);
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        if (Connected)
+                        {
+                            token = null;
+                            Connected = false;
+                            DisconnectedEvent?.Invoke(GroupID);//必要かな？？
+                        }
+                        else
+                        {
+                            token = null;
+                            Connected = false;//一応ね
+                        }
+                        FailConnectEvent?.Invoke(GroupID, ex);
+                    }
+                    await Task.Delay(RetryCoolTimeMilliseconds);//クールタイム
                 }
             }
+        }
 
-            private async Task<JObject> _Read(System.IO.StreamReader reader, CancellationToken token)
-            {
-                //boundary
-                await reader.ReadLineAsync().WithCancellation(token);
-                token.ThrowIfCancellationRequested();
-                //Content-Type(イベントが発生するか定期タイムスタンプが来るまで止まる。逆に言うとEmpty以降はawait要らないかも)
-                await reader.ReadLineAsync().WithCancellation(token);
-                token.ThrowIfCancellationRequested();
-                //Empty
-                await reader.ReadLineAsync().WithCancellation(token);
-                token.ThrowIfCancellationRequested();
-                //Json
-                string json = await reader.ReadLineAsync().WithCancellation(token);
-                token.ThrowIfCancellationRequested();
-                return JObject.Parse(json);
-            }
+        private async Task<JObject> _Read(System.IO.StreamReader reader, CancellationToken token)
+        {
+            //boundary
+            await reader.ReadLineAsync().WithCancellation(token);
+            token.ThrowIfCancellationRequested();
+            //Content-Type(イベントが発生するか定期タイムスタンプが来るまで止まる。逆に言うとEmpty以降はawait要らないかも)
+            await reader.ReadLineAsync().WithCancellation(token);
+            token.ThrowIfCancellationRequested();
+            //Empty
+            await reader.ReadLineAsync().WithCancellation(token);
+            token.ThrowIfCancellationRequested();
+            //Json
+            string json = await reader.ReadLineAsync().WithCancellation(token);
+            token.ThrowIfCancellationRequested();
+            return JObject.Parse(json);
         }
     }
 
