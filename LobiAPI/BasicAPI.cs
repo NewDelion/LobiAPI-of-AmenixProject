@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -27,7 +28,6 @@ namespace LobiAPI
             using (HttpClientHandler handler = new HttpClientHandler { CookieContainer = new CookieContainer() })
             using (HttpClient client = new HttpClient(handler))
             {
-                CookieContainer cookie = new CookieContainer();
                 client.DefaultRequestHeaders.Host = "lobi.co";
                 client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
                 client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate");
@@ -60,9 +60,9 @@ namespace LobiAPI
         }
         private async Task<string> GetToken(string device_uuid, string spell)
         {
-            HMACSHA1 localMac = new HMACSHA1(Encoding.ASCII.GetBytes("db6db1788023ce4703eecf6aa33f5fcde35a458c"));
             string sig = "";
-            using (System.IO.MemoryStream stream = new System.IO.MemoryStream(Encoding.ASCII.GetBytes(spell)))
+            using (HMACSHA1 localMac = new HMACSHA1(Encoding.ASCII.GetBytes("db6db1788023ce4703eecf6aa33f5fcde35a458c")))
+            using (var stream = new MemoryStream(Encoding.ASCII.GetBytes(spell)))
                 sig = Convert.ToBase64String(localMac.ComputeHash(stream));
             using (HttpClientHandler handler = new HttpClientHandler())
             using (HttpClient client = new HttpClient(handler))
@@ -94,18 +94,6 @@ namespace LobiAPI
             DeviceUUID = Guid.NewGuid().ToString();
             Token = await GetToken(DeviceUUID, spell);
             return Token != null && (Token ?? "").Length > 0;
-        }
-        public async void Login(string mail, string password, Action<bool> callback)
-        {
-            string spell = await GetSpell(mail, password);
-            if (spell == null || spell == "")
-            {
-                callback(false);
-                return;
-            }
-            DeviceUUID = Guid.NewGuid().ToString();
-            Token = await GetToken(DeviceUUID, spell);
-            callback(true);
         }
 
         public Task<User> GetMe()
