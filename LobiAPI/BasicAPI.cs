@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -23,6 +22,13 @@ namespace LobiAPI
         private string DeviceUUID = "";
         public string Token { get; set; }
 
+        private string GetCsrfToken(string source)
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(source, "name=\"csrf_token\" value=\"<?(csrf_token)[a-z0-9]+>\"", System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (!m.Success || !m.Groups["csrf_token"].Success || string.IsNullOrEmpty(m.Groups["csrf_token"].Value))
+                return null;
+            return m.Groups["csrf_token"].Value;
+        }
         private async Task<string> GetSpell(string mail, string password)
         {
             using (HttpClientHandler handler = new HttpClientHandler { CookieContainer = new CookieContainer() })
@@ -40,7 +46,9 @@ namespace LobiAPI
                 string source1 = null;
                 using (var res1 = await client.GetAsync("https://lobi.co/inapp/signin/password?webview=1")) //Cookie & csrf_token 
                     source1 = await res1.Content.ReadAsStringAsync();
-                string csrf_token = Pattern.get_string(source1, Pattern.csrf_token, "\"");
+                string csrf_token = GetCsrfToken(source1);
+                if (string.IsNullOrEmpty(csrf_token))
+                    return "";
                 client.DefaultRequestHeaders.Add("Referer", "https://lobi.co/inapp/signin/password?webview=1");
                 client.DefaultRequestHeaders.Add("Origin", "https://lobi.co");
                 FormUrlEncodedContent post_data = new FormUrlEncodedContent(new Dictionary<string, string>
@@ -51,9 +59,8 @@ namespace LobiAPI
                 });
                 using (var res2 = await client.PostAsync("https://lobi.co/inapp/signin/password", post_data))//spell
                 {
-                    string key = "nakamapbridge://signin?spell=";
-                    if (res2.Headers.Location != null && res2.Headers.Location.OriginalString.IndexOf(key) == 0 && res2.Headers.Location.OriginalString.Length > key.Length)
-                        return res2.Headers.Location.OriginalString.Substring(key.Length);
+                    if (res2.Headers.Location != null && res2.Headers.Location.OriginalString.StartsWith("nakamapbridge://signin?spell=") && res2.Headers.Location.OriginalString.Length > 29/*key length*/)
+                        return res2.Headers.Location.OriginalString.Substring(29);
                 }
             }
             return "";
@@ -89,11 +96,11 @@ namespace LobiAPI
         public async Task<bool> Login(string mail, string password)
         {
             string spell = await GetSpell(mail, password);
-            if (spell == null || spell == "")
+            if (string.IsNullOrEmpty(spell))
                 return false;
             DeviceUUID = Guid.NewGuid().ToString();
             Token = await GetToken(DeviceUUID, spell);
-            return Token != null && (Token ?? "").Length > 0;
+            return !string.IsNullOrEmpty(Token);
         }
 
         public Task<User> GetMe()
@@ -129,8 +136,8 @@ namespace LobiAPI
             Dictionary<string, string> data = new Dictionary<string, string>();
             while (true)
             {
-                var res = await GET<Contacts>(1, string.Format("user/{0}/contacts", user_id), cancelToken, data);
-                if (cancelToken.IsCancellationRequested == true)
+                var res = await GET<Contacts>(1, $"user/{user_id}/contacts", cancelToken, data);
+                if (cancelToken.IsCancellationRequested)
                     return null;
                 if (res == null || res.users == null || res.users.Length == 0)
                     break;
@@ -142,7 +149,7 @@ namespace LobiAPI
                 else
                     data.Add("cursor", res.next_cursor);
             }
-            if (cancelToken.IsCancellationRequested == true)
+            if (cancelToken.IsCancellationRequested)
                 return null;
             return result;
         }
@@ -171,8 +178,8 @@ namespace LobiAPI
             Dictionary<string, string> data = new Dictionary<string, string>();
             while (true)
             {
-                var res = await GET<Contacts>(1, string.Format("user/{0}/followers", user_id), cancelToken, data);
-                if (cancelToken.IsCancellationRequested == true)
+                var res = await GET<Contacts>(1, $"user/{user_id}/followers", cancelToken, data);
+                if (cancelToken.IsCancellationRequested)
                     return null;
                 if (res == null || res.users == null || res.users.Length == 0)
                     break;
@@ -184,7 +191,7 @@ namespace LobiAPI
                 else
                     data.Add("cursor", res.next_cursor);
             }
-            if (cancelToken.IsCancellationRequested == true)
+            if (cancelToken.IsCancellationRequested)
                 return null;
             return result;
         }
@@ -195,7 +202,7 @@ namespace LobiAPI
         }
         public async Task<User> GetUser(string user_id, CancellationToken cancelToken)
         {
-            return await GET<User>(1, string.Format("user/{0}", user_id), cancelToken, new Dictionary<string, string> { { "fields", "is_blocked,public_groups_count" } });
+            return await GET<User>(1, $"user/{user_id}", cancelToken, new Dictionary<string, string> { { "fields", "is_blocked,public_groups_count" } });
         }
         public Task<List<User>> GetBlockingUsersAll()
         {
@@ -208,7 +215,7 @@ namespace LobiAPI
             while (true)
             {
                 var res = await GET<Users>(2, "me/blocking_users", cancelToken, data);
-                if (cancelToken.IsCancellationRequested == true)
+                if (cancelToken.IsCancellationRequested)
                     return null;
                 if (res == null || res.users == null || res.users.Length == 0)
                     break;
@@ -220,7 +227,7 @@ namespace LobiAPI
                 else
                     data.Add("cursor", res.next_cursor);
             }
-            if (cancelToken.IsCancellationRequested == true)
+            if (cancelToken.IsCancellationRequested)
                 return null;
             return result;
         }
@@ -234,7 +241,7 @@ namespace LobiAPI
         }
         public async Task<Groups> GetInvited(CancellationToken cancelToken)
         {
-            return await GET<Groups>(1, string.Format("groups/invited"), cancelToken);
+            return await GET<Groups>(1, "groups/invited", cancelToken);
         }
 
         public Task<List<Group>> GetPublicGroupAll()
@@ -253,7 +260,7 @@ namespace LobiAPI
                     { "count", "1000" },
                     { "page", page++.ToString() }
                 });
-                if (cancelToken.IsCancellationRequested == true)
+                if (cancelToken.IsCancellationRequested)
                     return null;
                 if (res == null || res.Length == 0 || res[0] == null || res[0].items == null || res[0].items.Length == 0)
                     break;
@@ -261,7 +268,7 @@ namespace LobiAPI
                 if (res[0].items.Length < 1000)
                     break;
             }
-            if (cancelToken.IsCancellationRequested == true)
+            if (cancelToken.IsCancellationRequested)
                 return null;
             return result.ToList();
         }
@@ -275,8 +282,8 @@ namespace LobiAPI
             Dictionary<string, string> data = new Dictionary<string, string> { { "with_archived", "true" } };
             while (true)
             {
-                var res = await GET<VisibleGroups>(1, string.Format("user/{0}/visible_groups", user_id), cancelToken, data);
-                if (cancelToken.IsCancellationRequested == true)
+                var res = await GET<VisibleGroups>(1, $"user/{user_id}/visible_groups", cancelToken, data);
+                if (cancelToken.IsCancellationRequested)
                     return null;
                 if (res == null || res.public_groups == null || res.public_groups.Length == 0)
                     break;
@@ -288,7 +295,7 @@ namespace LobiAPI
                 else
                     data.Add("cursor", res.next_cursor);
             }
-            if (cancelToken.IsCancellationRequested == true)
+            if (cancelToken.IsCancellationRequested)
                 return null;
             return result;
         }
@@ -325,7 +332,7 @@ namespace LobiAPI
                     { "count", "1000" },
                     { "page", page++.ToString() }
                 });
-                if (cancelToken.IsCancellationRequested == true)
+                if (cancelToken.IsCancellationRequested)
                     return null;
                 if (res == null || res.Length == 0 || res[0] == null || res[0].items == null || res[0].items.Length == 0)
                     break;
@@ -333,7 +340,7 @@ namespace LobiAPI
                 if (res[0].items.Length < 1000)
                     break;
             }
-            if (cancelToken.IsCancellationRequested == true)
+            if (cancelToken.IsCancellationRequested)
                 return null;
             return result;
         }
@@ -360,7 +367,7 @@ namespace LobiAPI
         }
         public async Task<Group> GetGroup(string group_id, CancellationToken cancelToken)
         {
-            return await GET<Group>(2, string.Format("group/{0}", group_id), cancelToken, new Dictionary<string, string>
+            return await GET<Group>(2, $"group/{group_id}", cancelToken, new Dictionary<string, string>
             {
                 { "members_count", "1" },
                 { "fields", "subleaders,group_bookmark_info" }
@@ -372,7 +379,7 @@ namespace LobiAPI
         }
         public async Task<UserSmall> GetGroupLeader(string group_id, CancellationToken cancelToken)
         {
-            return (await GET<Members>(2, string.Format("group/{0}/members", group_id), cancelToken, new Dictionary<string, string>
+            return (await GET<Members>(2, $"group/{group_id}/members", cancelToken, new Dictionary<string, string>
             {
                 { "members_count", "1" },
                 { "fields", "owner" }
@@ -384,7 +391,7 @@ namespace LobiAPI
         }
         public async Task<List<UserSmall>> GetGroupSubleaders(string group_id, CancellationToken cancelToken)
         {
-            return ((await GET<Members>(2, string.Format("group/{0}/members", group_id), cancelToken, new Dictionary<string, string>
+            return ((await GET<Members>(2, $"group/{group_id}/members", cancelToken, new Dictionary<string, string>
             {
                 { "members_count", "1" },
                 { "fields", "subleaders" }
@@ -425,11 +432,11 @@ namespace LobiAPI
         public async Task<List<Chat>> GetThreads(string group_id, int count, CancellationToken cancelToken, string older_than = null, string newer_than = null)
         {
             Dictionary<string, string> data = new Dictionary<string, string> { { "count", count.ToString() } };
-            if (older_than != null && older_than != "")
+            if (!string.IsNullOrEmpty(older_than))
                 data.Add("older_than", older_than);
-            if (newer_than != null && newer_than != "")
+            if (!string.IsNullOrEmpty(newer_than))
                 data.Add("newer_than", newer_than);
-            return await GET<List<Chat>>(2, string.Format("group/{0}/chats", group_id), cancelToken, data);
+            return await GET<List<Chat>>(2, $"group/{group_id}/chats", cancelToken, data);
         }
         public Task<Reply> GetRepliesAll(string group_id, string chat_id)
         {
@@ -437,7 +444,7 @@ namespace LobiAPI
         }
         public async Task<Reply> GetRepliesAll(string group_id, string chat_id, CancellationToken cancelToken)
         {
-            return await GET<Reply>(1, string.Format("group/{0}/chats/replies", group_id), cancelToken, new Dictionary<string, string> { { "to", chat_id } });
+            return await GET<Reply>(1, $"group/{group_id}/chats/replies", cancelToken, new Dictionary<string, string> { { "to", chat_id } });
         }
         public Task<List<PokeUserItem>> GetPokesAll(string group_id, string chat_id)
         {
@@ -449,7 +456,7 @@ namespace LobiAPI
             Dictionary<string, string> data = new Dictionary<string, string> { { "id", chat_id } };
             while (true)
             {
-                var res = await GET<Pokes>(1, string.Format("group/{0}/chats/pokes", group_id), cancelToken, data);
+                var res = await GET<Pokes>(1, $"group/{group_id}/chats/pokes", cancelToken, data);
                 if (cancelToken.IsCancellationRequested)
                     return null;
                 if (res == null || res.users == null || res.users.Length == 0)
@@ -474,26 +481,26 @@ namespace LobiAPI
         public async Task<Notifications> GetNotifications(int count, CancellationToken cancelToken, string cursor = null)
         {
             Dictionary<string, string> data = new Dictionary<string, string> { { "count", count.ToString() } };
-            if (cursor != null && cursor != "")
+            if (!string.IsNullOrEmpty(cursor))
                 data.Add("last_cursor", cursor);
             return await GET<Notifications>(2, "info/notifications", cancelToken, data);
         }
 
         public async Task<RequestResult> Like(string group_id, string chat_id)
         {
-            return await POST<RequestResult>(1, string.Format("group/{0}/chats/like", group_id), new Dictionary<string, string> { { "id", chat_id } });
+            return await POST<RequestResult>(1, $"group/{group_id}/chats/like", new Dictionary<string, string> { { "id", chat_id } });
         }
         public async Task<RequestResult> UnLike(string group_id, string chat_id)
         {
-            return await POST<RequestResult>(1, string.Format("group/{0}/chats/unlike", group_id), new Dictionary<string, string> { { "id", chat_id } });
+            return await POST<RequestResult>(1, $"group/{group_id}/chats/unlike", new Dictionary<string, string> { { "id", chat_id } });
         }
         public async Task<RequestResult> Boo(string group_id, string chat_id)
         {
-            return await POST<RequestResult>(1, string.Format("group/{0}/chats/boo", group_id), new Dictionary<string, string> { { "id", chat_id } });
+            return await POST<RequestResult>(1, $"group/{group_id}/chats/boo", new Dictionary<string, string> { { "id", chat_id } });
         }
         public async Task<RequestResult> UnBoo(string group_id, string chat_id)
         {
-            return await POST<RequestResult>(1, string.Format("group/{0}/chats/unboo", group_id), new Dictionary<string, string> { { "id", chat_id } });
+            return await POST<RequestResult>(1, $"group/{group_id}/chats/unboo", new Dictionary<string, string> { { "id", chat_id } });
         }
 
         public async Task<RequestResult> Follow(string user_id)
@@ -553,9 +560,9 @@ namespace LobiAPI
         }
         public async Task<Chat> Chat(string group_id, string message, bool shout = false)
         {
-            if (message == null || message == "")
+            if (string.IsNullOrEmpty(message))
                 throw new ArgumentNullException("メッセージが指定されていません");
-            return await POST<Chat>(1, string.Format("group/{0}/chats", group_id), new Dictionary<string, string>
+            return await POST<Chat>(1, $"group/{group_id}/chats", new Dictionary<string, string>
             {
                 { "type", shout ? "shout" : "normal" },
                 { "message", message }
@@ -563,7 +570,7 @@ namespace LobiAPI
         }
         public async Task<Chat> Chat(string group_id, string message, List<string> images, bool shout = false)
         {
-            if (message == null || message == "")
+            if (string.IsNullOrEmpty(message))
                 throw new ArgumentNullException("メッセージが指定されていません");
             var assets = await Assets(images);
             Dictionary<string, string> data = new Dictionary<string, string>
@@ -573,15 +580,15 @@ namespace LobiAPI
             };
             if (assets.Count > 0)
                 data.Add("assets", string.Join(",", assets.Select(d => d.id + ":image")));
-            return await POST<Chat>(1, string.Format("group/{0}/chats", group_id), data);
+            return await POST<Chat>(1, $"group/{group_id}/chats", data);
         }
         public async Task<Chat> Chat(string group_id, string message, string reply_to)
         {
-            if (message == null || message == "")
+            if (string.IsNullOrEmpty(message))
                 throw new ArgumentNullException("メッセージが指定されていません");
-            if (reply_to == null || reply_to == "")
-                throw new ArgumentNullException("返信元が指定されていません");
-            return await POST<Chat>(1, string.Format("group/{0}/chats", group_id), new Dictionary<string, string>
+            if (string.IsNullOrEmpty(reply_to))
+                throw new ArgumentNullException("返信先が指定されていません");
+            return await POST<Chat>(1, $"group/{group_id}/chats", new Dictionary<string, string>
             {
                 { "type", "normal" },
                 { "reply_to", reply_to },
@@ -590,10 +597,10 @@ namespace LobiAPI
         }
         public async Task<Chat> Chat(string group_id, string message, List<string> images, string reply_to)
         {
-            if (message == null || message == "")
+            if (string.IsNullOrEmpty(message))
                 throw new ArgumentNullException("メッセージが指定されていません");
-            if (reply_to == null || reply_to == "")
-                throw new ArgumentNullException("返信元が指定されていません");
+            if (string.IsNullOrEmpty(reply_to))
+                throw new ArgumentNullException("返信先が指定されていません");
             var assets = await Assets(images);
             Dictionary<string, string> data = new Dictionary<string, string>
             {
@@ -603,39 +610,39 @@ namespace LobiAPI
             };
             if (assets.Count > 0)
                 data.Add("assets", string.Join(",", assets.Select(d => d.id + ":image")));
-            return await POST<Chat>(1, string.Format("group/{0}/chats", group_id), data);
+            return await POST<Chat>(1, $"group/{group_id}/chats", data);
         }
         public async Task<RequestResult> RemoveChat(string group_id, string chat_id)
         {
-            return await POST<RequestResult>(1, string.Format("group/{0}/chats/remove", group_id), new Dictionary<string, string> { { "id", chat_id } });
+            return await POST<RequestResult>(1, $"group/{group_id}/chats/remove", new Dictionary<string, string> { { "id", chat_id } });
         }
 
         public async Task<Group> Join(string group_id)
         {
-            return await POST<Group>(1, string.Format("group/{0}/join", group_id), new Dictionary<string, string>());
+            return await POST<Group>(1, $"group/{group_id}/join", new Dictionary<string, string>());
         }
         /// <summary>
         /// 招待を拒否
         /// </summary>
         public async Task<RequestResult> RefuseInvitation(string group_id)
         {
-            return await POST<RequestResult>(1, string.Format("group/{0}/refuse_invitation", group_id), new Dictionary<string, string>());
+            return await POST<RequestResult>(1, $"group/{group_id}/refuse_invitation", new Dictionary<string, string>());
         }
         public async Task<RequestResult> Kick(string group_id, string user_id)
         {
-            return await POST<RequestResult>(1, string.Format("group/{0}/kick", group_id), new Dictionary<string, string> { { "target_user", user_id } });
+            return await POST<RequestResult>(1, $"group/{group_id}/kick", new Dictionary<string, string> { { "target_user", user_id } });
         }
         public async Task<Group> LeaderTransfer(string group_id, string user_id)
         {
-            return await POST<Group>(1, string.Format("group/{0}/transfer", group_id), new Dictionary<string, string> { { "target_user", user_id } });
+            return await POST<Group>(1, $"group/{group_id}/transfer", new Dictionary<string, string> { { "target_user", user_id } });
         }
         public async Task<RequestResult> SetSubleader(string group_id, string user_id)
         {
-            return await POST<RequestResult>(1, string.Format("group/{0}/subleaders", group_id), new Dictionary<string, string> { { "user", user_id } });
+            return await POST<RequestResult>(1, $"group/{group_id}/subleaders", new Dictionary<string, string> { { "user", user_id } });
         }
         public async Task<RequestResult> RemoveSubleader(string group_id, string user_id)
         {
-            return await POST<RequestResult>(1, string.Format("group/{0}/subleaders/remove", group_id), new Dictionary<string, string> { { "user", user_id } });
+            return await POST<RequestResult>(1, $"group/{group_id}/subleaders/remove", new Dictionary<string, string> { { "user", user_id } });
         }
 
         public async Task<RequestResult> Block(string user_id)
@@ -656,7 +663,7 @@ namespace LobiAPI
                 client.DefaultRequestHeaders.Add("User-Agent", UserAgent);
                 client.DefaultRequestHeaders.Add("Host", "api.lobi.co");
                 handler.AutomaticDecompression = DecompressionMethods.GZip;
-                string url = string.Format("https://api.lobi.co/{0}/{1}?platform={2}&lang=ja&token={3}{4}", version, request_url, platform, Token, query == null ? "" : string.Join("", query.Select(d => string.Format("&{0}={1}", WebUtility.UrlEncode(d.Key), WebUtility.UrlEncode(d.Value)))));
+                string url = $"https://api.lobi.co/{version}/{request_url}?platform={platform}&lang=ja&token={Token}{string.Join("", (query ?? new Dictionary<string, string>()).Select(d => $"&{WebUtility.UrlEncode(d.Key)}={WebUtility.UrlEncode(d.Value)}"))}";
                 try
                 {
                     using (var res = await client.GetAsync(url, (CancellationToken)cancelToken))
@@ -687,7 +694,7 @@ namespace LobiAPI
                 client.DefaultRequestHeaders.Add("User-Agent", UserAgent);
                 client.DefaultRequestHeaders.Add("Host", "api.lobi.co");
                 handler.AutomaticDecompression = DecompressionMethods.GZip;
-                string url = string.Format("https://api.lobi.co/{0}/{1}", version, request_url);
+                string url = $"https://api.lobi.co/{version}/{request_url}";
                 FormUrlEncodedContent post_data = new FormUrlEncodedContent(new Dictionary<string, string>
                 {
                     { "lang", "ja" },
@@ -712,43 +719,6 @@ namespace LobiAPI
         private Task<T> POST<T>(int version, string request_url, Dictionary<string, string> query)
         {
             return POST<T>(version, request_url, query, CancellationToken.None);
-        }
-        private async Task<string> POST_TEST(int version, string request_url, Dictionary<string, string> query)
-        {
-            if (query == null)
-                throw new ArgumentNullException("queryがnullです");
-            using (HttpClientHandler handler = new HttpClientHandler())
-            using (HttpClient client = new HttpClient(handler))
-            {
-                client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
-                client.DefaultRequestHeaders.Add("User-Agent", UserAgent);
-                client.DefaultRequestHeaders.Add("Host", "api.lobi.co");
-                handler.AutomaticDecompression = DecompressionMethods.GZip;
-                string url = string.Format("https://api.lobi.co/{0}/{1}", version, request_url);
-                FormUrlEncodedContent post_data = new FormUrlEncodedContent(new Dictionary<string, string>
-                {
-                    { "lang", "ja" },
-                    { "token", Token }
-                }.Concat(query));
-                using (var res = await client.PostAsync(url, post_data))
-                {
-                    if (res.StatusCode != HttpStatusCode.OK)
-                        throw new RequestAPIException(new ErrorObject(res));
-                    string result = await res.Content.ReadAsStringAsync();
-                    return result;
-                }
-            }
-        }
-
-        private class Pattern
-        {
-            public static string csrf_token = "<input type=\"hidden\" name=\"csrf_token\" value=\"";
-            public static string get_string(string source, string pattern, string end_pattern)
-            {
-                int start = source.IndexOf(pattern) + pattern.Length;
-                int end = source.IndexOf(end_pattern, start + 1);
-                return source.Substring(start, end - start);
-            }
         }
     }
 }
