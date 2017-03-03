@@ -24,7 +24,7 @@ namespace LobiAPI
 
         private string GetCsrfToken(string source)
         {
-            var m = System.Text.RegularExpressions.Regex.Match(source, "name=\"csrf_token\" value=\"<?(csrf_token)[a-z0-9]+>\"", System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var m = System.Text.RegularExpressions.Regex.Match(source, "name=\"csrf_token\" value=\"(?<csrf_token>[a-z0-9]+)\"", System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             if (!m.Success || !m.Groups["csrf_token"].Success || string.IsNullOrEmpty(m.Groups["csrf_token"].Value))
                 return null;
             return m.Groups["csrf_token"].Value;
