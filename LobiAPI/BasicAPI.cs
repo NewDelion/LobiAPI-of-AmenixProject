@@ -98,9 +98,7 @@ namespace LobiAPI
             Token = GetToken(DeviceUUID, spell);
             return Token != null && (Token ?? "").Length > 0;
         }
-
-        private long NowUnixtime => (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
-        private string RandomNonce => BitConverter.ToString(BitConverter.GetBytes(DateTime.Now.Ticks)).Replace("-", "");
+        
         public bool TwitterLogin(string mail, string password)
         {
             const string TWITTER_CONSUMER_KEY = "ZrgdukWwDeXVg9NCWG7rA";
