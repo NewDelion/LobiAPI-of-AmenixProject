@@ -51,52 +51,56 @@ namespace LobiAPI
 
             _Doc = new HtmlDocument();
         }
-
-        private string GetCsrf()
-        {
-            _Client.UserAgent = "Mozilla/5.0 (Linux; Android 5.1; Google Nexus 10 - 5.1.0 - API 22 - 2560x1600 Build/LMY47D) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/39.0.0.0 Safari/537.36 Lobi/8.10.3";
-            _Client.CookieContainer = new CookieContainer();
-
-            var req_get_csrf = new RestRequest("https://lobi.co/inapp/signin/password", Method.GET);
-            req_get_csrf.AddParameter("webview", "1", ParameterType.UrlSegment);
-            return _Client.Execute(req_get_csrf).Content.SelectSingleHtmlNodeAttribute("//input[@name='csrf_token']", "value");
-        }
-        private string GetSpell(string mail, string password)
-        {
-            var req_get_spell = new RestRequest("https://lobi.co/inapp/signin/password", Method.POST);
-            req_get_spell.AddParameter("csrf_token", GetCsrf(), ParameterType.GetOrPost);
-            req_get_spell.AddParameter("email", mail, ParameterType.GetOrPost);
-            req_get_spell.AddParameter("password", password, ParameterType.GetOrPost);
-            var location_header = _Client.Execute(req_get_spell).Headers.FirstOrDefault(d => d.Name == "Location");
-            _Client.UserAgent = UserAgent;
-            _Client.CookieContainer = null;
-            string location = location_header == null ? null : (string)location_header.Value;
-            string prefix = "nakamapbridge://signin?spell=";
-            if (location == null || !location.StartsWith(prefix))
-                return "";
-            return location.Substring(prefix.Length);
-        }
-        private string GetToken(string device_uuid, string spell)
-        {
-            string sig;
-            using (var mac = new HMACSHA1(Encoding.ASCII.GetBytes("db6db1788023ce4703eecf6aa33f5fcde35a458c")))
-            using (var stream = new MemoryStream(Encoding.ASCII.GetBytes(spell)))
-                sig = Convert.ToBase64String(mac.ComputeHash(stream));
-
-            var req = new RestRequest("1/signin_confirmation", Method.POST);
-            req.AddParameter("device_uuid", DeviceUUID, ParameterType.GetOrPost);
-            req.AddParameter("sig", sig, ParameterType.GetOrPost);
-            req.AddParameter("spell", spell, ParameterType.GetOrPost);
-            return _Client.Execute<UserMinimalWithToken>(req).Data.Token;
-        }
+        
         public bool Login(string mail, string password)
         {
-            string spell = GetSpell(mail, password);
-            if (spell == null || spell == "")
+            string GetCsrf()
+            {
+                _Client.UserAgent = "Mozilla/5.0 (Linux; Android 5.1; Google Nexus 10 - 5.1.0 - API 22 - 2560x1600 Build/LMY47D) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/39.0.0.0 Safari/537.36 Lobi/8.10.3";
+                _Client.CookieContainer = new CookieContainer();
+
+                var req_get_csrf = new RestRequest("https://lobi.co/inapp/signin/password", Method.GET);
+                req_get_csrf.AddParameter("webview", "1", ParameterType.UrlSegment);
+                return _Client.Execute(req_get_csrf).Content.SelectSingleHtmlNodeAttribute("//input[@name='csrf_token']", "value");
+            }
+
+            string GetSpell()
+            {
+                var req_get_spell = new RestRequest("https://lobi.co/inapp/signin/password", Method.POST);
+                req_get_spell.AddParameter("csrf_token", GetCsrf(), ParameterType.GetOrPost);
+                req_get_spell.AddParameter("email", mail, ParameterType.GetOrPost);
+                req_get_spell.AddParameter("password", password, ParameterType.GetOrPost);
+                var location_header = _Client.Execute(req_get_spell).Headers.FirstOrDefault(d => d.Name == "Location");
+                _Client.UserAgent = UserAgent;
+                _Client.CookieContainer = null;
+                string location = location_header == null ? null : (string)location_header.Value;
+                string prefix = "nakamapbridge://signin?spell=";
+                if (location == null || !location.StartsWith(prefix))
+                    return "";
+                return location.Substring(prefix.Length);
+            }
+
+            string Spell = GetSpell();
+            if (string.IsNullOrEmpty(Spell))
                 return false;
             DeviceUUID = Guid.NewGuid().ToString();
-            Token = GetToken(DeviceUUID, spell);
-            return Token != null && (Token ?? "").Length > 0;
+
+            string GetToken()
+            {
+                string sig;
+                using (var mac = new HMACSHA1(Encoding.ASCII.GetBytes("db6db1788023ce4703eecf6aa33f5fcde35a458c")))
+                using (var stream = new MemoryStream(Encoding.ASCII.GetBytes(Spell)))
+                    sig = Convert.ToBase64String(mac.ComputeHash(stream));
+
+                var req = new RestRequest("1/signin_confirmation", Method.POST);
+                req.AddParameter("device_uuid", DeviceUUID, ParameterType.GetOrPost);
+                req.AddParameter("sig", sig, ParameterType.GetOrPost);
+                req.AddParameter("spell", Spell, ParameterType.GetOrPost);
+                return _Client.Execute<UserMinimalWithToken>(req).Data.Token;
+            }
+
+            Token = GetToken();
+            return (Token ?? "").Length > 0;
         }
         
         public bool TwitterLogin(string mail, string password)
