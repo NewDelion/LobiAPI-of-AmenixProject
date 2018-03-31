@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web;
 using LobiAPI.Json;
+using System.Threading;
 
 namespace LobiAPI
 {
@@ -52,7 +53,7 @@ namespace LobiAPI
             _Doc = new HtmlDocument();
         }
 
-        public bool Login(string mail, string password, LoginServiceType service)
+        public Task<bool> Login(string mail, string password, LoginServiceType service)
         {
             switch (service)
             {
@@ -61,29 +62,31 @@ namespace LobiAPI
                 case LoginServiceType.Twitter:
                     return LoginByTwitter(mail, password);
                 default:
-                    return false;//TODO: Throw Exception
+                    throw new NotSupportedException("指定されたサービスでのログイン処理はサポートしていません");
             }
         }
-        
-        public bool LoginByLobi(string mail, string password)
+
+        public Task<bool> LoginByLobi(string mail, string password) => LoginByLobi(mail, password, default(CancellationToken));
+
+        public async Task<bool> LoginByLobi(string mail, string password, CancellationToken cancellationToken)
         {
-            string GetCsrf()
+            async Task<string> GetCsrf()
             {
                 _Client.UserAgent = "Mozilla/5.0 (Linux; Android 5.1; Google Nexus 10 - 5.1.0 - API 22 - 2560x1600 Build/LMY47D) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/39.0.0.0 Safari/537.36 Lobi/8.10.3";
                 _Client.CookieContainer = new CookieContainer();
 
                 var req_get_csrf = new RestRequest("https://lobi.co/inapp/signin/password", Method.GET);
                 req_get_csrf.AddParameter("webview", "1", ParameterType.UrlSegment);
-                return _Client.Execute(req_get_csrf).Content.SelectSingleHtmlNodeAttribute("//input[@name='csrf_token']", "value");
+                return (await _Client.ExecuteTaskAsync(req_get_csrf, cancellationToken)).Content.SelectSingleHtmlNodeAttribute("//input[@name='csrf_token']", "value");
             }
 
-            string GetSpell()
+            async Task<string> GetSpell()
             {
                 var req_get_spell = new RestRequest("https://lobi.co/inapp/signin/password", Method.POST);
                 req_get_spell.AddParameter("csrf_token", GetCsrf(), ParameterType.GetOrPost);
                 req_get_spell.AddParameter("email", mail, ParameterType.GetOrPost);
                 req_get_spell.AddParameter("password", password, ParameterType.GetOrPost);
-                var location_header = _Client.Execute(req_get_spell).Headers.FirstOrDefault(d => d.Name == "Location");
+                var location_header = (await _Client.ExecuteTaskAsync(req_get_spell, cancellationToken)).Headers.FirstOrDefault(d => d.Name == "Location");
                 _Client.UserAgent = UserAgent;
                 _Client.CookieContainer = null;
                 string location = location_header == null ? null : (string)location_header.Value;
@@ -93,33 +96,38 @@ namespace LobiAPI
                 return location.Substring(prefix.Length);
             }
 
-            string Spell = GetSpell();
+            string Spell = await GetSpell();
             if (string.IsNullOrEmpty(Spell))
                 return false;
             DeviceUUID = Guid.NewGuid().ToString();
 
-            string GetToken()
+            async Task<string> GetToken()
             {
                 string sig;
                 using (var mac = new HMACSHA1(Encoding.ASCII.GetBytes("db6db1788023ce4703eecf6aa33f5fcde35a458c")))
                 using (var stream = new MemoryStream(Encoding.ASCII.GetBytes(Spell)))
                     sig = Convert.ToBase64String(mac.ComputeHash(stream));
-
+                
                 var req = new RestRequest("1/signin_confirmation", Method.POST);
                 req.AddParameter("device_uuid", DeviceUUID, ParameterType.GetOrPost);
                 req.AddParameter("sig", sig, ParameterType.GetOrPost);
                 req.AddParameter("spell", Spell, ParameterType.GetOrPost);
-                return _Client.Execute<UserMinimalWithToken>(req).Data.Token;
+                return (await _Client.ExecuteTaskAsync<UserMinimalWithToken>(req, cancellationToken)).Data.Token;
             }
 
-            Token = GetToken();
+            Token = await GetToken();
             return (Token ?? "").Length > 0;
         }
-        
+
         /// <summary>
         /// 何度もログイン処理を行うとTwitterアカウントがロックされる可能性があります。Tokenを再利用してこのメソッドの呼び出し頻度を減らしてください。
         /// </summary>
-        public bool LoginByTwitter(string mail, string password)
+        public Task<bool> LoginByTwitter(string mail, string password) => LoginByTwitter(mail, password, default(CancellationToken));
+
+        /// <summary>
+        /// 何度もログイン処理を行うとTwitterアカウントがロックされる可能性があります。Tokenを再利用してこのメソッドの呼び出し頻度を減らしてください。
+        /// </summary>
+        public async Task<bool> LoginByTwitter(string mail, string password, CancellationToken cancellationToken)
         {
             const string TWITTER_CONSUMER_KEY = "ZrgdukWwDeXVg9NCWG7rA";
             const string TWITTER_CONSUMER_KEY_SECRET = "WYNDf3OcvrWD31tnKnGbQHXqmZq1fohwBuvMnIJSs";
@@ -131,26 +139,26 @@ namespace LobiAPI
             };
 
             var req = new RestRequest("oauth/request_token", Method.POST);
-            var qs = HttpUtility.ParseQueryString(client.Execute(req).Content);
+            var qs = HttpUtility.ParseQueryString((await client.ExecuteTaskAsync(req, cancellationToken)).Content);
             var oauthToken = qs["oauth_token"];
             var oauthTokenSecret = qs["oauth_token_secret"];
 
             var req2 = new RestRequest("oauth/authorize", Method.GET);
             req2.AddParameter("oauth_token", oauthToken);
-            var authenticity_token = client.Execute(req2).Content.SelectSingleHtmlNodeAttribute("//input[@name='authenticity_token']", "value");
+            var authenticity_token = (await client.ExecuteTaskAsync(req2, cancellationToken)).Content.SelectSingleHtmlNodeAttribute("//input[@name='authenticity_token']", "value");
 
             var req3 = new RestRequest("oauth/authorize", Method.POST);
             req3.AddParameter("oauth_token", oauthToken);
             req3.AddParameter("authenticity_token", authenticity_token);
             req3.AddParameter("session[username_or_email]", mail);
             req3.AddParameter("session[password]", password);
-            var res = client.Execute(req3);
+            var res = await client.ExecuteTaskAsync(req3, cancellationToken);
             var tmp = res.Content.SelectSingleHtmlNodeAttribute("//meta[@http-equiv='refresh']", "content");
             var verifier = tmp.Substring(tmp.LastIndexOf('=') + 1);
 
             var req4 = new RestRequest("oauth/access_token", Method.POST);
             client.Authenticator = OAuth1Authenticator.ForAccessToken(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_KEY_SECRET, oauthToken, oauthTokenSecret, verifier);
-            var qs2 = HttpUtility.ParseQueryString(client.Execute(req4).Content);
+            var qs2 = HttpUtility.ParseQueryString((await client.ExecuteTaskAsync(req4, cancellationToken)).Content);
             var accessToken = qs2["oauth_token"];
             var accessTokenSecret = qs2["oauth_token_secret"];
 
@@ -161,7 +169,7 @@ namespace LobiAPI
             req5.AddParameter("device_uuid", DeviceUUID);
             req5.AddParameter("access_token", accessToken);
             req5.AddParameter("access_token_secret", accessTokenSecret);
-            Token = _Client.Execute<UserMinimalWithToken>(req5).Data.Token;
+            Token = (await _Client.ExecuteTaskAsync<UserMinimalWithToken>(req5, cancellationToken)).Data.Token;
             return true;
         }
     }
