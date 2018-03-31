@@ -24,7 +24,7 @@ namespace LobiAPI.Example
                 Console.Write("Password: ");
                 string password = Console.ReadLine();
 
-                if (api.Login(mail, password))
+                if (api.Login(mail, password, LoginServiceType.Lobi))
                     break;
                 Console.WriteLine("ログイン失敗....");
                 Console.ReadKey();

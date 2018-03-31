@@ -51,8 +51,21 @@ namespace LobiAPI
 
             _Doc = new HtmlDocument();
         }
+
+        public bool Login(string mail, string password, LoginServiceType service)
+        {
+            switch (service)
+            {
+                case LoginServiceType.Lobi:
+                    return LoginByLobi(mail, password);
+                case LoginServiceType.Twitter:
+                    return LoginByTwitter(mail, password);
+                default:
+                    return false;//TODO: Throw Exception
+            }
+        }
         
-        public bool Login(string mail, string password)
+        public bool LoginByLobi(string mail, string password)
         {
             string GetCsrf()
             {
@@ -103,7 +116,10 @@ namespace LobiAPI
             return (Token ?? "").Length > 0;
         }
         
-        public bool TwitterLogin(string mail, string password)
+        /// <summary>
+        /// 何度もログイン処理を行うとTwitterアカウントがロックされる可能性があります。Tokenを再利用してこのメソッドの呼び出し頻度を減らしてください。
+        /// </summary>
+        public bool LoginByTwitter(string mail, string password)
         {
             const string TWITTER_CONSUMER_KEY = "ZrgdukWwDeXVg9NCWG7rA";
             const string TWITTER_CONSUMER_KEY_SECRET = "WYNDf3OcvrWD31tnKnGbQHXqmZq1fohwBuvMnIJSs";
