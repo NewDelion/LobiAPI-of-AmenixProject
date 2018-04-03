@@ -26,18 +26,21 @@ namespace LobiAPI.Json
 
         [DeserializeAs(Name = "cover")]
         public string Cover { get; set; }
-
-        [DeserializeAs(Name = "premium")]
-        public bool Premium { get; set; }
     }
 
-    public class UserMinimalWithToken : UserMinimal
+    public class UserMinimalWithPremium : UserMinimal
+    {
+        [DeserializeAs(Name = "premium")]
+        public int Premium { get; set; }
+    }
+
+    public class UserMinimalWithTokenAndPremium : UserMinimalWithPremium
     {
         [DeserializeAs(Name = "token")]
         public string Token { get; set; }
     }
 
-    public class UserInfo : UserMinimal
+    public class UserInfo : UserMinimalWithPremium
     {
         [DeserializeAs(Name = "contacts_count")]
         public int ContactsCount { get; set; }

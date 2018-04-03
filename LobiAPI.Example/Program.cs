@@ -13,6 +13,8 @@ namespace LobiAPI.Example
             var api = new BasicAPI();
             Login(api);
             var me = api.GetMe().Result;
+
+            Console.ReadKey();
         }
 
         static void Login(BasicAPI api)
@@ -31,7 +33,6 @@ namespace LobiAPI.Example
                 Console.ReadKey();
             }
             Console.WriteLine("ログインしました。");
-            Console.WriteLine();
             Console.ReadKey();
         }
     }

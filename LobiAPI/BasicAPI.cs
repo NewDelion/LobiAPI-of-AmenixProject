@@ -112,7 +112,7 @@ namespace LobiAPI
                 req.AddParameter("device_uuid", DeviceUUID, ParameterType.GetOrPost);
                 req.AddParameter("sig", sig, ParameterType.GetOrPost);
                 req.AddParameter("spell", Spell, ParameterType.GetOrPost);
-                return (await _Client.ExecuteTaskAsync<UserMinimalWithToken>(req, cancellationToken)).Data.Token;
+                return (await _Client.ExecuteTaskAsync<UserMinimalWithTokenAndPremium>(req, cancellationToken)).Data.Token;
             }
 
             Token = await GetToken();
@@ -169,27 +169,22 @@ namespace LobiAPI
             req5.AddParameter("device_uuid", DeviceUUID);
             req5.AddParameter("access_token", accessToken);
             req5.AddParameter("access_token_secret", accessTokenSecret);
-            Token = (await _Client.ExecuteTaskAsync<UserMinimalWithToken>(req5, cancellationToken)).Data.Token;
+            Token = (await _Client.ExecuteTaskAsync<UserMinimalWithTokenAndPremium>(req5, cancellationToken)).Data.Token;
             return true;
         }
 
         public Task<UserInfo> GetMe() => GetMe(default(CancellationToken));
+        public Task<UserInfo> GetMe(CancellationToken cancellationToken) => GET<UserInfo>("1/me", new Dictionary<string, string> { { "fields", "premium,public_groups_count" } }, cancellationToken);
 
-        public async Task<UserInfo> GetMe(CancellationToken cancellationToken)
+        protected Task<T> GET<T>(string endpoint) => GET<T>(endpoint, Enumerable.Empty<KeyValuePair<string, string>>(), default(CancellationToken));
+        protected Task<T> GET<T>(string endpoint, IEnumerable<KeyValuePair<string, string>> parameters) => GET<T>(endpoint, parameters, default(CancellationToken));
+        protected Task<T> GET<T>(string endpoint, CancellationToken cancellationToken) => GET<T>(endpoint, Enumerable.Empty<KeyValuePair<string, string>>(), cancellationToken);
+        protected async Task<T> GET<T>(string endpoint, IEnumerable<KeyValuePair<string, string>> parameters, CancellationToken cancellationToken)
         {
-            return (await _Client.ExecuteTaskAsync<UserInfo>(new RestRequest("1/me", Method.GET)
-            {
-                Parameters =
-                {
-                    new Parameter
-                    {
-                        Name = "fields",
-                        Value = "premium,public_groups_count",
-                        Type = ParameterType.GetOrPost,
-                        ContentType = null
-                    }
-                }
-            }, cancellationToken)).Data;
+            var req = new RestRequest(endpoint, Method.GET);
+            foreach (var param in parameters)
+                req.AddParameter(new Parameter { Name = param.Key, Value = param.Value, Type = ParameterType.GetOrPost });
+            return (await _Client.ExecuteTaskAsync<T>(req, cancellationToken)).Data;
         }
     }
 }
