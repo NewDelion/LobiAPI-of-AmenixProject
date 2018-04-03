@@ -83,7 +83,7 @@ namespace LobiAPI
             async Task<string> GetSpell()
             {
                 var req_get_spell = new RestRequest("https://lobi.co/inapp/signin/password", Method.POST);
-                req_get_spell.AddParameter("csrf_token", GetCsrf(), ParameterType.GetOrPost);
+                req_get_spell.AddParameter("csrf_token", await GetCsrf(), ParameterType.GetOrPost);
                 req_get_spell.AddParameter("email", mail, ParameterType.GetOrPost);
                 req_get_spell.AddParameter("password", password, ParameterType.GetOrPost);
                 var location_header = (await _Client.ExecuteTaskAsync(req_get_spell, cancellationToken)).Headers.FirstOrDefault(d => d.Name == "Location");
