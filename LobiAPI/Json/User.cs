@@ -51,4 +51,10 @@ namespace LobiAPI.Json
         [DeserializeAs(Name = "public_groups_count")]
         public int PublicGroupsCount { get; set; }
     }
+
+    public class Users : Cursorable
+    {
+        [DeserializeAs(Name = "users")]
+        public List<UserMinimal> UserList { get; set; }
+    }
 }

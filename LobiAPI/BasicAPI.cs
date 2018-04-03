@@ -176,6 +176,40 @@ namespace LobiAPI
         public Task<UserInfo> GetMe() => GetMe(CancellationToken.None);
         public Task<UserInfo> GetMe(CancellationToken cancellationToken) => GET<UserInfo>("1/me", new Dictionary<string, string> { { "fields", "premium,public_groups_count" } }, cancellationToken);
 
+        public Task<Users> GetContacts(string cursor) => GetContacts(cursor, CancellationToken.None);
+        public Task<Users> GetContacts(string cursor, CancellationToken cancellationToken) => GET<Users>("3/me/contacts", new Dictionary<string, string> { { "cursor", cursor } }, cancellationToken);
+        public Task<Users> GetContactAll() => GetContactAll(CancellationToken.None);
+        public async Task<Users> GetContactAll(CancellationToken cancellationToken)
+        {
+            Users result = await GetContacts("", cancellationToken);
+            while(result != null && result.NextCursor != null && result.NextCursor != "-1")
+            {
+                var tmp = await GetContacts(result.NextCursor, cancellationToken);
+                if (tmp == null)
+                    break;//throwの方がいいのかな？
+                result.NextCursor = tmp.NextCursor;
+                result.UserList.AddRange(tmp.UserList);
+            }
+            return result;
+        }
+
+        public Task<Users> GetContacts(string user_id, string cursor) => GetContacts(user_id, cursor, CancellationToken.None);
+        public Task<Users> GetContacts(string user_id, string cursor, CancellationToken cancellationToken) => GET<Users>($"1/user/{user_id}/contacts", new Dictionary<string, string> { { "cursor", cursor } }, cancellationToken);
+        public Task<Users> GetContactAll(string user_id) => GetContactAll(user_id, CancellationToken.None);
+        public async Task<Users> GetContactAll(string user_id, CancellationToken cancellationToken)
+        {
+            Users result = await GetContacts(user_id, "", cancellationToken);
+            while (result != null && result.NextCursor != null && result.NextCursor != "-1")
+            {
+                var tmp = await GetContacts(user_id, result.NextCursor, cancellationToken);
+                if (tmp == null)
+                    break;//throwの方がいいのかな？
+                result.NextCursor = tmp.NextCursor;
+                result.UserList.AddRange(tmp.UserList);
+            }
+            return result;
+        }
+
         protected Task<T> GET<T>(string endpoint) => GET<T>(endpoint, Enumerable.Empty<KeyValuePair<string, string>>(), CancellationToken.None);
         protected Task<T> GET<T>(string endpoint, IEnumerable<KeyValuePair<string, string>> parameters) => GET<T>(endpoint, parameters, CancellationToken.None);
         protected Task<T> GET<T>(string endpoint, CancellationToken cancellationToken) => GET<T>(endpoint, Enumerable.Empty<KeyValuePair<string, string>>(), cancellationToken);

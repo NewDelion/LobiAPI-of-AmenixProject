@@ -52,6 +52,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BasicAPI.cs" />
+    <Compile Include="Json\Cursorable.cs" />
     <Compile Include="Json\User.cs" />
     <Compile Include="LoginServiceType.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
