@@ -172,5 +172,24 @@ namespace LobiAPI
             Token = (await _Client.ExecuteTaskAsync<UserMinimalWithToken>(req5, cancellationToken)).Data.Token;
             return true;
         }
+
+        public Task<UserInfo> GetMe() => GetMe(default(CancellationToken));
+
+        public async Task<UserInfo> GetMe(CancellationToken cancellationToken)
+        {
+            return (await _Client.ExecuteTaskAsync<UserInfo>(new RestRequest("1/me", Method.GET)
+            {
+                Parameters =
+                {
+                    new Parameter
+                    {
+                        Name = "fields",
+                        Value = "premium,public_groups_count",
+                        Type = ParameterType.GetOrPost,
+                        ContentType = null
+                    }
+                }
+            }, cancellationToken)).Data;
+        }
     }
 }

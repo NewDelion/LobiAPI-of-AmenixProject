@@ -12,6 +12,7 @@ namespace LobiAPI.Example
         {
             var api = new BasicAPI();
             Login(api);
+            var me = api.GetMe().Result;
         }
 
         static void Login(BasicAPI api)
