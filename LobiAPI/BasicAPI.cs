@@ -66,7 +66,7 @@ namespace LobiAPI
             }
         }
 
-        public Task<bool> LoginByLobi(string mail, string password) => LoginByLobi(mail, password, default(CancellationToken));
+        public Task<bool> LoginByLobi(string mail, string password) => LoginByLobi(mail, password, CancellationToken.None);
 
         public async Task<bool> LoginByLobi(string mail, string password, CancellationToken cancellationToken)
         {
@@ -122,7 +122,7 @@ namespace LobiAPI
         /// <summary>
         /// 何度もログイン処理を行うとTwitterアカウントがロックされる可能性があります。Tokenを再利用してこのメソッドの呼び出し頻度を減らしてください。
         /// </summary>
-        public Task<bool> LoginByTwitter(string mail, string password) => LoginByTwitter(mail, password, default(CancellationToken));
+        public Task<bool> LoginByTwitter(string mail, string password) => LoginByTwitter(mail, password, CancellationToken.None);
 
         /// <summary>
         /// 何度もログイン処理を行うとTwitterアカウントがロックされる可能性があります。Tokenを再利用してこのメソッドの呼び出し頻度を減らしてください。
@@ -173,11 +173,11 @@ namespace LobiAPI
             return true;
         }
 
-        public Task<UserInfo> GetMe() => GetMe(default(CancellationToken));
+        public Task<UserInfo> GetMe() => GetMe(CancellationToken.None);
         public Task<UserInfo> GetMe(CancellationToken cancellationToken) => GET<UserInfo>("1/me", new Dictionary<string, string> { { "fields", "premium,public_groups_count" } }, cancellationToken);
 
-        protected Task<T> GET<T>(string endpoint) => GET<T>(endpoint, Enumerable.Empty<KeyValuePair<string, string>>(), default(CancellationToken));
-        protected Task<T> GET<T>(string endpoint, IEnumerable<KeyValuePair<string, string>> parameters) => GET<T>(endpoint, parameters, default(CancellationToken));
+        protected Task<T> GET<T>(string endpoint) => GET<T>(endpoint, Enumerable.Empty<KeyValuePair<string, string>>(), CancellationToken.None);
+        protected Task<T> GET<T>(string endpoint, IEnumerable<KeyValuePair<string, string>> parameters) => GET<T>(endpoint, parameters, CancellationToken.None);
         protected Task<T> GET<T>(string endpoint, CancellationToken cancellationToken) => GET<T>(endpoint, Enumerable.Empty<KeyValuePair<string, string>>(), cancellationToken);
         protected async Task<T> GET<T>(string endpoint, IEnumerable<KeyValuePair<string, string>> parameters, CancellationToken cancellationToken)
         {
