@@ -114,7 +114,7 @@ namespace LobiAPI
                 req.AddParameter("device_uuid", DeviceUUID, ParameterType.GetOrPost);
                 req.AddParameter("sig", sig, ParameterType.GetOrPost);
                 req.AddParameter("spell", Spell, ParameterType.GetOrPost);
-                return (await _Client.ExecuteTaskAsync<UserMinimalWithTokenAndPremium>(req, cancellationToken)).Data.Token;
+                return (await _Client.ExecuteTaskAsync<UserMinimalWithToken>(req, cancellationToken)).Data.Token;
             }
 
             Token = await GetToken();
@@ -171,7 +171,7 @@ namespace LobiAPI
             req5.AddParameter("device_uuid", DeviceUUID);
             req5.AddParameter("access_token", accessToken);
             req5.AddParameter("access_token_secret", accessTokenSecret);
-            Token = (await _Client.ExecuteTaskAsync<UserMinimalWithTokenAndPremium>(req5, cancellationToken)).Data.Token;
+            Token = (await _Client.ExecuteTaskAsync<UserMinimalWithToken>(req5, cancellationToken)).Data.Token;
             return true;
         }
 
@@ -261,6 +261,13 @@ namespace LobiAPI
             }
             return result;
         }
+
+        #endregion
+
+        #region GetUser()
+
+        public Task<UserInfo> GetUser(string user_id) => GetUser(user_id, CancellationToken.None);
+        public Task<UserInfo> GetUser(string user_id, CancellationToken cancellationToken) => GET<UserInfo>($"1/user/{user_id}", new Dictionary<string, string> { { "fields", "is_blocked,public_groups_count" } });
 
         #endregion
 
