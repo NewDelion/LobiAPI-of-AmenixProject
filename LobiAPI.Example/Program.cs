@@ -12,7 +12,7 @@ namespace LobiAPI.Example
         {
             var api = new BasicAPI();
             Login(api);
-            var me = api.GetMe().Result;
+            var me = api.GetMe();
 
             Console.ReadKey();
         }
@@ -27,7 +27,7 @@ namespace LobiAPI.Example
                 Console.Write("Password: ");
                 string password = Console.ReadLine();
 
-                if (api.Login(mail, password, LoginServiceType.Lobi).Result)
+                if (api.Login(mail, password, LoginServiceType.Lobi))
                     break;
                 Console.WriteLine("ログイン失敗....");
                 Console.ReadKey();
