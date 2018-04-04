@@ -32,15 +32,11 @@ namespace LobiAPI.Json
     {
         [DeserializeAs(Name = "premium")]
         public int PremiumRaw { get; set; }
-
-        public bool Premium
-        {
-            get => PremiumRaw != 0;
-            set => PremiumRaw = value ? 1 : 0;
-        }
+        
+        public bool Premium => PremiumRaw != 0;
     }
 
-    public class UserMinimalWithTokenAndPremium : UserMinimalWithPremium
+    public class UserMinimalWithToken : UserMinimal
     {
         [DeserializeAs(Name = "token")]
         public string Token { get; set; }
@@ -59,12 +55,8 @@ namespace LobiAPI.Json
 
         [DeserializeAs(Name = "is_blocked")]
         public int IsBlockedRaw { get; set; }
-
-        public bool IsBlocked
-        {
-            get => IsBlockedRaw != 0;
-            set => IsBlockedRaw = value ? 1 : 0;
-        }
+        
+        public bool IsBlocked => IsBlockedRaw != 0;
     }
 
     public class Users : Cursorable
