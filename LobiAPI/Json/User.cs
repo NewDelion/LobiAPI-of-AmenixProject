@@ -31,7 +31,13 @@ namespace LobiAPI.Json
     public class UserMinimalWithPremium : UserMinimal
     {
         [DeserializeAs(Name = "premium")]
-        public int Premium { get; set; }
+        public int PremiumRaw { get; set; }
+
+        public bool Premium
+        {
+            get => PremiumRaw != 0;
+            set => PremiumRaw = value ? 1 : 0;
+        }
     }
 
     public class UserMinimalWithTokenAndPremium : UserMinimalWithPremium
@@ -50,6 +56,15 @@ namespace LobiAPI.Json
 
         [DeserializeAs(Name = "public_groups_count")]
         public int PublicGroupsCount { get; set; }
+
+        [DeserializeAs(Name = "is_blocked")]
+        public int IsBlockedRaw { get; set; }
+
+        public bool IsBlocked
+        {
+            get => IsBlockedRaw != 0;
+            set => IsBlockedRaw = value ? 1 : 0;
+        }
     }
 
     public class Users : Cursorable
